@@ -6,7 +6,7 @@
     <title>இஸ்லாமிக் திக்ர் கவுண்டர் & மேலாண்மை</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons for Bottom Bar -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -26,137 +26,79 @@
 <body class="bg-bgLight text-slate-800 font-sans pb-24">
 
     <!-- Header -->
-    <header class="bg-primary text-white py-4 px-6 shadow-md text-center">
-        <h1 class="text-xl font-bold">🕌 இஸ்லாமிக் திக்ர் கவுண்டர்</h1>
-        <p class="text-xs text-sky-100">Dhikr Counter & Analytics System</p>
+    <header class="bg-primary text-white py-4 px-6 shadow-md flex justify-between items-center">
+        <div>
+            <h1 class="text-lg font-bold">🕌 இஸ்லாமிக் திக்ர் கவுண்டர்</h1>
+            <p id="appHeaderSubtitle" class="text-xs text-sky-100">Dhikr Counter & Multi-User Management</p>
+        </div>
+        <div id="currentUserBadge" class="text-xs bg-sky-800 px-3 py-1.5 rounded-full border border-sky-400 flex items-center gap-1">
+            <i class="fa-solid fa-user"></i> <span id="activeUserLabel">பயனர் தேர்வு செய்யப்படவில்லை</span>
+        </div>
     </header>
 
     <main class="max-w-4xl mx-auto p-4 mt-2">
 
-        <!-- TAB 1: Recited List (ஓதிய விவரங்கள்) -->
-        <section id="tab-recited" class="tab-content block">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4">
-                <h2 class="text-lg font-bold text-primary mb-3"><i class="fa-solid fa-list-check mr-2"></i> ஓதிய விவரங்கள் பட்டியல்</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left border-collapse">
-                        <thead>
-                            <tr class="bg-sky-50 text-sky-900 border-b border-sky-200">
-                                <th class="p-2">பயனர் பெயர்</th>
-                                <th class="p-2">திக்ர் பெயர்</th>
-                                <th class="p-2">எண்ணிக்கை</th>
-                                <th class="p-2">தேதி</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recitedTableBody">
-                            <!-- Dynamic Rows -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 2: Dhikr List (திக்ர் பட்டியல் - அரபி, தமிழ், அர்த்தம்) -->
-        <section id="tab-dhikr-list" class="tab-content hidden">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4">
-                <h2 class="text-lg font-bold text-primary mb-3"><i class="fa-solid fa-book-open mr-2"></i> திக்ர் பட்டியல் (அரபி & தமிழ்)</h2>
-                <div id="dhikrCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Dynamic Dhikr Cards -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 3: Admin Panel (அட்மின் பேனல் - Add, Remove, Customize, Backup) -->
-        <section id="tab-admin" class="tab-content hidden">
+        <!-- TAB 1: User Personal Dashboard (பயனரின் தனி டாஷ்போர்டு) -->
+        <section id="tab-user-dashboard" class="tab-content block">
             <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-4">
-                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-user-shield mr-2"></i> அட்மின் பேனல் மேலாண்மை</h2>
-                
-                <!-- Add User -->
-                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
-                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய பயனரைச் சேர் (Add Customer)</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newUserName" placeholder="பயனர் பெயர்" class="border p-2 rounded text-sm flex-1">
-                        <button onclick="addUser()" class="bg-primary text-white px-4 py-2 rounded text-sm hover:bg-primaryDark">சேர்</button>
+                <div class="flex justify-between items-center border-b pb-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-gauge-high mr-2"></i> எனது தனிப்பட்ட டாஷ்போர்டு</h2>
+                        <p class="text-xs text-slate-500">நீங்கள் ஓதிய திக்ர் விவரங்கள் மட்டும் இங்கே பிரத்யேகமாகக் காட்டப்படும்.</p>
                     </div>
                 </div>
 
-                <!-- Add Dhikr Category -->
-                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
-                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய திக்ர் / கேட்டகிரி சேர் (Add Dhikr)</h3>
-                    <div class="space-y-2">
-                        <input type="text" id="newDhikrName" placeholder="திக்ர் பெயர் (எ.கா: சுப்ஹானல்லாஹ்)" class="border p-2 rounded text-sm w-full">
-                        <input type="text" id="newDhikrArabic" placeholder="அரபி உரை (Arabic Text)" class="border p-2 rounded text-sm w-full">
-                        <input type="text" id="newDhikrMeaning" placeholder="தமிழ் அர்த்தம்" class="border p-2 rounded text-sm w-full">
-                        <button onclick="addDhikrCategory()" class="bg-primary text-white px-4 py-2 rounded text-sm hover:bg-primaryDark w-full">திக்ரைச் சேர்</button>
-                    </div>
-                </div>
-
-                <!-- Customer & Dhikr Management Lists -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="border p-3 rounded">
-                        <h4 class="font-semibold text-xs text-slate-600 mb-2">பயனர்கள் பட்டியல் (Remove/Manage)</h4>
-                        <ul id="adminUserList" class="space-y-1 text-sm"></ul>
-                    </div>
-                    <div class="border p-3 rounded">
-                        <h4 class="font-semibold text-xs text-slate-600 mb-2">திக்ர் பட்டியல் (Remove/Manage)</h4>
-                        <ul id="adminDhikrList" class="space-y-1 text-sm"></ul>
-                    </div>
-                </div>
-
-                <!-- Backup & Restore -->
-                <div class="pt-2 flex gap-2">
-                    <button onclick="exportData()" class="bg-emerald-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-download mr-1"></i> பேக்கப் (Backup)</button>
-                    <button onclick="resetAllData()" class="bg-rose-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-trash mr-1"></i> அனைத்துத் தரவையும் அழி</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 4: Analytics (Daily, Monthly, Yearly Views & Counts) -->
-        <section id="tab-analytics" class="tab-content hidden">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-4">
-                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-chart-pie mr-2"></i> புள்ளிவிவரங்கள் & அறிக்கைகள்</h2>
-                
+                <!-- Personal Analytics -->
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">டெய்லி வியூஸ்</p>
-                        <p id="statDaily" class="text-lg font-bold text-primary">0</p>
+                        <p class="text-xs text-slate-500">இன்றைய திக்ர்</p>
+                        <p id="myStatDaily" class="text-lg font-bold text-primary">0</p>
                     </div>
                     <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">மந்த்லி வியூஸ்</p>
-                        <p id="statMonthly" class="text-lg font-bold text-primary">0</p>
+                        <p class="text-xs text-slate-500">இந்த மாத திக்ர்</p>
+                        <p id="myStatMonthly" class="text-lg font-bold text-primary">0</p>
                     </div>
                     <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">இயர்லி வியூஸ்</p>
-                        <p id="statYearly" class="text-lg font-bold text-primary">0</p>
+                        <p class="text-xs text-slate-500">மொத்த திக்ர்</p>
+                        <p id="myStatTotal" class="text-lg font-bold text-primary">0</p>
                     </div>
                 </div>
 
-                <div class="border-t pt-3">
-                    <h3 class="font-semibold text-sm text-slate-700 mb-2">ஒவ்வொரு திக்ருக்கும் மொத்த கவுண்டிங்</h3>
-                    <div id="dhikrWiseStats" class="space-y-2 text-sm">
-                        <!-- Stat items -->
+                <!-- Personal Recited History -->
+                <div>
+                    <h3 class="font-bold text-sm text-slate-700 mb-2">நான் ஓதிய திக்ர் வரலாறு</h3>
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="w-full text-sm text-left border-collapse">
+                            <thead>
+                                <tr class="bg-sky-50 text-sky-900 border-b border-sky-200">
+                                    <th class="p-2">திக்ர் பெயர்</th>
+                                    <th class="p-2">எண்ணிக்கை</th>
+                                    <th class="p-2">தேதி</th>
+                                </tr>
+                            </thead>
+                            <tbody id="myRecitedTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 5: Counter (Interactive Counter with Reverse Target & Normal Mode) -->
+        <!-- TAB 2: Counter -->
         <section id="tab-counter" class="tab-content hidden">
             <div class="bg-cardBg p-6 rounded-xl shadow-sm border border-sky-100 text-center space-y-4">
                 <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-fingerprint mr-2"></i> திக்ர் கவுண்டர்</h2>
 
                 <!-- Select User & Dhikr -->
                 <div class="flex flex-col md:flex-row gap-2 justify-center">
-                    <select id="counterUserSelect" class="border p-2 rounded text-sm"></select>
-                    <select id="counterDhikrSelect" onchange="updateCounterDisplayInfo()" class="border p-2 rounded text-sm"></select>
+                    <select id="counterUserSelect" onchange="onUserSelectChange()" class="border p-2 rounded text-sm bg-slate-50 font-semibold text-sky-900 border-sky-300"></select>
+                    <select id="counterDhikrSelect" onchange="updateCounterDisplayInfo()" class="border p-2 rounded text-sm bg-slate-50 font-semibold border-sky-300"></select>
                 </div>
 
-                <!-- Arabic & Meaning display -->
                 <div class="bg-sky-50 p-4 rounded-lg border border-sky-200">
                     <p id="displayArabic" class="text-2xl font-bold text-sky-900 mb-1">سُبْحَانَ اللَّهِ</p>
                     <p id="displayMeaning" class="text-xs text-slate-600">அல்லாஹ் தூய்மையானவன்</p>
                 </div>
 
-                <!-- Mode Selector (Target vs Normal) -->
                 <div class="flex justify-center items-center gap-4 text-sm">
                     <label class="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name="countMode" value="target" checked onclick="toggleMode('target')"> டார்கெட் முறை (Reverse)
@@ -166,15 +108,238 @@
                     </label>
                 </div>
 
-                <!-- Target Input Box -->
                 <div id="targetBox" class="flex justify-center items-center gap-2">
                     <span class="text-sm font-medium">டார்கெட் இலக்கு:</span>
                     <input type="number" id="targetInputCount" value="33" min="1" onchange="resetCounterForTarget()" class="border p-1 rounded w-20 text-center text-sm font-bold">
                 </div>
 
-                <!-- Counter Display Number -->
                 <div class="my-6">
                     <span id="currentCountNum" class="text-6xl font-extrabold text-primary">33</span>
+                    <p id="targetStatusText" class="text-xs text-slate-500 mt-1">மீதமுள்ள திக்ர்: 33 / 33</p>
+                </div>
+
+                <div class="flex justify-center gap-6">
+                    <button onclick="adjustCount(-1)" class="w-16 h-16 bg-rose-500 text-white rounded-full text-2xl font-bold shadow hover:bg-rose-600 active:scale-95 transition">-</button>
+                    <button onclick="adjustCount(1)" class="w-16 h-16 bg-primary text-white rounded-full text-2xl font-bold shadow hover:bg-primaryDark active:scale-95 transition">+</button>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="saveCurrentDhikrLog()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow hover:bg-emerald-700 transition">
+                        பதிவைச் சேமிக்கவும் (Save Log)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Dhikr List -->
+        <section id="tab-dhikr-list" class="tab-content hidden">
+            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4">
+                <h2 class="text-lg font-bold text-primary mb-3"><i class="fa-solid fa-book-open mr-2"></i> திக்ர் பட்டியல் (அரபி & தமிழ்)</h2>
+                <div id="dhikrCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </section>
+
+        <!-- TAB 4: Daily Tasks -->
+        <section id="tab-tasks" class="tab-content hidden">
+            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-3">
+                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-calendar-day mr-2"></i> டெய்லி டாஸ்க் (Daily Tasks)</h2>
+                <div id="dailyTaskList" class="space-y-2 mt-3"></div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Admin Panel (Protected System) -->
+        <section id="tab-admin" class="tab-content hidden">
+            <!-- Password Gate -->
+            <div id="adminAuthGate" class="bg-cardBg p-6 rounded-xl shadow-sm border border-sky-100 text-center max-w-md mx-auto space-y-4">
+                <div class="w-12 h-12 bg-sky-100 text-primary rounded-full flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <h3 class="font-bold text-slate-700">அட்மின் லாகின் (Admin Login)</h3>
+                <div class="space-y-2 text-left">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">பயனர் பெயர் (Username)</label>
+                        <input type="text" id="adminUserAuthInput" placeholder="azar" class="border p-2 rounded text-sm w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">கடவுச்சொல் (Password)</label>
+                        <input type="password" id="adminPassAuthInput" placeholder="••••••••" class="border p-2 rounded text-sm w-full mt-1">
+                    </div>
+                </div>
+                <button onclick="checkAdminLogin()" class="bg-primary text-white px-6 py-2 rounded text-sm font-bold w-full shadow">உள்நுழைக</button>
+            </div>
+
+            <!-- Admin Controls -->
+            <div id="adminControls" class="hidden bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 space-y-6">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-gears mr-2"></i> அட்மின் மேலாண்மை பேனல்</h2>
+                    <button onclick="logoutAdmin()" class="text-xs text-rose-500 font-bold bg-rose-50 px-2 py-1 rounded border border-rose-200">வெளியேறு</button>
+                </div>
+
+                <!-- Update Admin Credentials -->
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                    <h3 class="font-semibold text-sm text-amber-900"><i class="fa-solid fa-key mr-1"></i> அட்மின் லாகின் பாஸ்வேர்ட் மாற்ற</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <input type="text" id="updateAdminUser" placeholder="புதிய பயனர் பெயர்" class="border p-2 rounded text-sm bg-white">
+                        <input type="password" id="updateAdminPass" placeholder="புதிய கடவுச்சொல்" class="border p-2 rounded text-sm bg-white">
+                    </div>
+                    <button onclick="updateAdminCredentials()" class="bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-amber-700">அட்மின் விபரங்களை புதுப்பி</button>
+                </div>
+
+                <!-- Add New User/Customer -->
+                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
+                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய பயனரைச் சேர் (Add Customer)</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newUserName" placeholder="வாடிக்கையாளர் பெயர்" class="border p-2 rounded text-sm flex-1">
+                        <button onclick="addUser()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold">சேர்</button>
+                    </div>
+                </div>
+
+                <!-- Customer Inspection & Analytics (Admin Only View) -->
+                <div class="p-3 bg-slate-50 rounded-lg border space-y-3">
+                    <h3 class="font-semibold text-sm text-slate-800"><i class="fa-solid fa-users-viewfinder mr-1"></i> வாடிக்கையாளர்கள் தனிப்பட்ட திக்ர் அறிக்கைகள் (Customer Inspection)</h3>
+                    <p class="text-xs text-slate-500">வாடிக்கையாளரின் பெயரை கிளிக் செய்து அவர்கள் ஓதிய திக்ர்களை அட்மின் பார்க்கவும்:</p>
+                    
+                    <select id="adminInspectUserSelect" onchange="renderAdminUserInspection()" class="border p-2 rounded text-sm w-full bg-white font-semibold text-primary"></select>
+
+                    <div id="adminUserInspectCard" class="bg-white p-3 rounded border text-sm space-y-2">
+                        <!-- Inspection data renders here -->
+                    </div>
+                </div>
+
+                <!-- Overall All Users Summary -->
+                <div>
+                    <h3 class="font-semibold text-sm text-slate-800 mb-2">ஒட்டுமொத்த பயனர்களின் திக்ர் புள்ளிவிவரங்கள்</h3>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="bg-sky-50 p-2 rounded border">
+                            <p class="text-slate-500">இன்று மொத்த திக்ர்</p>
+                            <p id="adminAllDaily" class="font-bold text-primary text-base">0</p>
+                        </div>
+                        <div class="bg-sky-50 p-2 rounded border">
+                            <p class="text-slate-500">இம்மாத மொத்த திக்ர்</p>
+                            <p id="adminAllMonthly" class="font-bold text-primary text-base">0</p>
+                        </div>
+                        <div class="bg-sky-50 p-2 rounded border">
+                            <p class="text-slate-500">ஒட்டுமொத்த திக்ர்</p>
+                            <p id="adminAllTotal" class="font-bold text-primary text-base">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Dhikr Category -->
+                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
+                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய திக்ர் சேர் (Add Dhikr)</h3>
+                    <div class="space-y-2">
+                        <input type="text" id="newDhikrName" placeholder="திக்ர் பெயர் (எ.கா: சுப்ஹானல்லாஹ்)" class="border p-2 rounded text-sm w-full">
+                        <input type="text" id="newDhikrArabic" placeholder="அரபி உரை (Arabic Text)" class="border p-2 rounded text-sm w-full">
+                        <input type="text" id="newDhikrMeaning" placeholder="தமிழ் அர்த்தம்" class="border p-2 rounded text-sm w-full">
+                        <button onclick="addDhikrCategory()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold w-full">திக்ரைச் சேர்</button>
+                    </div>
+                </div>
+
+                <!-- Add Daily Task -->
+                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
+                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய டெய்லி டாஸ்க் அமை</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newTaskInput" placeholder="டாஸ்க் விபரம்..." class="border p-2 rounded text-sm flex-1">
+                        <button onclick="addDailyTask()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold">டாஸ்க் சேர்</button>
+                    </div>
+                </div>
+
+                <!-- Management Lists -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border p-3 rounded bg-slate-50">
+                        <h4 class="font-semibold text-xs text-slate-600 mb-2">வாடிக்கையாளர்கள் மேலாண்மை (Remove)</h4>
+                        <ul id="adminUserList" class="space-y-1 text-sm"></ul>
+                    </div>
+                    <div class="border p-3 rounded bg-slate-50">
+                        <h4 class="font-semibold text-xs text-slate-600 mb-2">திக்ர் மேலாண்மை (Remove)</h4>
+                        <ul id="adminDhikrList" class="space-y-1 text-sm"></ul>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button onclick="exportData()" class="bg-emerald-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-download mr-1"></i> பேக்கப் (Backup)</button>
+                    <button onclick="resetAllData()" class="bg-rose-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-trash mr-1"></i> அனைத்துத் தரவையும் அழி</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom App Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-sky-100 shadow-lg flex justify-around py-3 px-2 z-40">
+        <button onclick="switchTab('tab-user-dashboard', this)" class="nav-btn flex flex-col items-center text-primary font-semibold text-xs">
+            <i class="fa-solid fa-gauge-high text-lg mb-1"></i>டாஷ்போர்டு
+        </button>
+        <button onclick="switchTab('tab-counter', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-fingerprint text-lg mb-1"></i>கவுண்டர்
+        </button>
+        <button onclick="switchTab('tab-dhikr-list', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-book text-lg mb-1"></i>திக்ர் பட்டியல்
+        </button>
+        <button onclick="switchTab('tab-tasks', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-tasks text-lg mb-1"></i>டெய்லி டாஸ்க்
+        </button>
+        <button onclick="switchTab('tab-admin', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-user-shield text-lg mb-1"></i>அட்மின்
+        </button>
+    </nav>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let db = JSON.parse(localStorage.getItem('dhikr_app_v2_db')) || {
+            admin: {
+                username: "azar",
+                password: "8760546343"
+            },
+            users: [
+                { id: 1, name: "முகமது அலி" },
+                { id: 2, name: "அப்துல் ரஹ்மான்" }
+            ],
+            dhikrs: [
+                { id: 1, name: "சுப்ஹானல்லாஹ்", arabic: "سُبْحَانَ اللَّهِ", meaning: "அல்லாஹ் தூய்மையானவன்" },
+                { id: 2, name: "அல்ஹம்துலில்லாஹ்", arabic: "الْحَمْدُ لِلَّهِ", meaning: "புகழ் அனைத்தும் அல்லாஹ்வுக்கே" },
+                { id: 3, name: "அல்லாஹு அக்பர்", arabic: "اللَّهُ أَكْبَرُ", meaning: "அல்லாஹ் மிகப் பெரியவன்" }
+            ],
+            logs: [],
+            tasks: [
+                { id: 1, text: "காலை சுப்ஹானல்லாஹ் 100 முறை", completed: false }
+            ]
+        };
+
+        let selectedUserId = db.users[0] ? db.users[0].id : 1;
+        let isTargetMode = true;
+        let initialTarget = 33;
+        let currentRemaining = 33;
+        let normalCount = 0;
+
+        function saveData() {
+            localStorage.setItem('dhikr_app_v2_db', JSON.stringify(db));
+            renderAll();
+        }
+
+        function checkAdminLogin() {
+            let u = document.getElementById('adminUserAuthInput').value.trim();
+            let p = document.getElementById('adminPassAuthInput').value.trim();
+
+            if (u === db.admin.username && p === db.admin.password) {
+                document.getElementById('adminAuthGate').classList.add('hidden');
+                document.getElementById('adminControls').classList.remove('hidden');
+            } else {
+                alert("தவறான பயனர் பெயர் அல்லது கடவுச்சொல்!");
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminUserAuthInput').value = '';
+            document.getElementById('adminPassAuthInput').value = '';
+            document.getElementById('adminAuthGate').classList.remove('hidden');
+            document.getElementById('adminControls').classList.add('hidden');
+        }
+
+        function updateAdminCredentials() {
+            let nu = document.getElementById('updateAdminUser').value.trim();
+            let np = document.getElementById('updateAdminPasl font-extrabold text-primary">33</span>
                     <p id="targetStatusText" class="text-xs text-slate-500 mt-1">மீதமுள்ள திக்ர்: 33 / 33</p>
                 </div>
 
