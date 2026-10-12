@@ -1,0 +1,2 @@
+# Dhikr-coud
+Dikr counding
