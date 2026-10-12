@@ -386,6 +386,218 @@
             }
         }
 
+     l font-extrabold text-primary">33</span>
+                    <p id="targetStatusText" class="text-xs text-slate-500 mt-1">மீதமுள்ள திக்ர்: 33 / 33</p>
+                </div>
+
+                <!-- Plus and Minus Buttons -->
+                <div class="flex justify-center gap-6">
+                    <button onclick="adjustCount(-1)" class="w-16 h-16 bg-rose-500 text-white rounded-full text-2xl font-bold shadow hover:bg-rose-600 active:scale-95 transition">-</button>
+                    <button onclick="adjustCount(1)" class="w-16 h-16 bg-primary text-white rounded-full text-2xl font-bold shadow hover:bg-primaryDark active:scale-95 transition">+</button>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="saveCurrentDhikrLog()" class="bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow hover:bg-emerald-700">பதிவைச் சேமிக்கவும் (Save Log)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: Daily Tasks -->
+        <section id="tab-tasks" class="tab-content hidden">
+            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-3">
+                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-calendar-day mr-2"></i> டெய்லி டாஸ்க் (Daily Tasks)</h2>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="newTaskInput" placeholder="புதிய டெய்லி டாஸ்க் எழுதவும் (எ.கா: சுப்ஹானல்லாஹ் 100 முறை)" class="border p-2 rounded text-sm flex-1">
+                    <button onclick="addDailyTask()" class="bg-primary text-white px-4 py-2 rounded text-sm">சேர்</button>
+                </div>
+
+                <div id="dailyTaskList" class="space-y-2 mt-3">
+                    <!-- Task items -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom App Icon Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-sky-100 shadow-lg flex justify-around py-3 px-2 z-50">
+        <button onclick="switchTab('tab-recited', this)" class="nav-btn flex flex-col items-center text-primary font-semibold text-xs">
+            <i class="fa-solid fa-list text-lg mb-1"></i>ஓதிய விவரம்
+        </button>
+        <button onclick="switchTab('tab-dhikr-list', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-book text-lg mb-1"></i>திக்ர் பட்டியல்
+        </button>
+        <button onclick="switchTab('tab-counter', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-fingerprint text-lg mb-1"></i>கவுண்டர்
+        </button>
+        <button onclick="switchTab('tab-tasks', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-tasks text-lg mb-1"></i>டெய்லி டாஸ்க்
+        </button>
+        <button onclick="switchTab('tab-analytics', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-chart-bar text-lg mb-1"></i>அறிக்கைகள்
+        </button>
+        <button onclick="switchTab('tab-admin', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
+            <i class="fa-solid fa-gear text-lg mb-1"></i>அட்மின்
+        </button>
+    </nav>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let db = JSON.parse(localStorage.getItem('dhikr_app_db')) || {
+            users: [
+                { id: 1, name: "முகமது அலி" },
+                { id: 2, name: "அப்துல் ரஹ்மான்" }
+            ],
+            dhikrs: [
+                { id: 1, name: "சுப்ஹானல்லாஹ்", arabic: "سُبْحَانَ اللَّهِ", meaning: "அல்லாஹ் தூய்மையானவன்" },
+                { id: 2, name: "அல்ஹம்துலில்லாஹ்", arabic: "الْحَمْدُ لِلَّهِ", meaning: "புகழ் அனைத்தும் அல்லாஹ்வுக்கே" },
+                { id: 3, name: "அல்லாஹு அக்பர்", arabic: "اللَّهُ أَكْبَرُ", meaning: "அல்லாஹ் மிகப் பெரியவன்" }
+            ],
+            logs: [],
+            tasks: [
+                { id: 1, text: "காலை சுப்ஹானல்லாஹ் 100 முறை", completed: false },
+                { id: 2, text: "ஸலவாத் 50 முறை", completed: true }
+            ]
+        };
+
+        let isTargetMode = true;
+        let initialTarget = 33;
+        let currentRemaining = 33;
+        let normalCount = 0;
+
+        function saveData() {
+            localStorage.setItem('dhikr_app_db', JSON.stringify(db));
+            renderAll();
+        }
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-primary', 'font-semibold');
+                el.classList.add('text-slate-400');
+            });
+            if(btnElement) {
+                btnElement.classList.remove('text-slate-400');
+                btnElement.classList.add('text-primary', 'font-semibold');
+            }
+        }
+
+        function toggleMode(mode) {
+            isTargetMode = (mode === 'target');
+            document.getElementById('targetBox').style.display = isTargetMode ? 'flex' : 'none';
+            resetCounterForTarget();
+        }
+
+        function resetCounterForTarget() {
+            initialTarget = parseInt(document.getElementById('targetInputCount').value) || 33;
+            currentRemaining = initialTarget;
+            normalCount = 0;
+
+            if (isTargetMode) {
+                document.getElementById('currentCountNum').innerText = currentRemaining;
+                document.getElementById('targetStatusText').innerText = `மீதமுள்ள திக்ர்: ${currentRemaining} / ${initialTarget}`;
+            } else {
+                document.getElementById('currentCountNum').innerText = normalCount;
+                document.getElementById('targetStatusText').innerText = `சாதாரண முறை (Normal Count)`;
+            }
+        }
+
+        function adjustCount(change) {
+            if (isTargetMode) {
+                // Clicking + reduces remaining count towards 0
+                if (change > 0) {
+                    if (currentRemaining > 0) {
+                        currentRemaining--;
+                    }
+                } else {
+                    // Clicking - increases remaining count back up to initial target
+                    if (currentRemaining < initialTarget) {
+                        currentRemaining++;
+                    }
+                }
+
+                document.getElementById('currentCountNum').innerText = currentRemaining;
+                document.getElementById('targetStatusText').innerText = `மீதமுள்ள திக்ர்: ${currentRemaining} / ${initialTarget}`;
+
+                if (currentRemaining === 0) {
+                    alert("மாஷா அல்லாஹ்! உங்கள் திக்ர் டார்கெட் நிறைவடைந்தது!");
+                }
+            } else {
+                // Normal Mode (0, 1, 2, 3...)
+                normalCount += change;
+                if (normalCount < 0) normalCount = 0; // Minimum limit 0
+
+                document.getElementById('currentCountNum').innerText = normalCount;
+                document.getElementById('targetStatusText').innerText = `சாதாரண முறை (Normal Count)`;
+            }
+        }
+
+        function updateCounterDisplayInfo() {
+            let dhikrId = document.getElementById('counterDhikrSelect').value;
+            let dhikr = db.dhikrs.find(d => d.id == dhikrId);
+            if(dhikr) {
+                document.getElementById('displayArabic').innerText = dhikr.arabic || '';
+                document.getElementById('displayMeaning').innerText = dhikr.meaning || '';
+            }
+        }
+
+        function saveCurrentDhikrLog() {
+            let userId = document.getElementById('counterUserSelect').value;
+            let dhikrId = document.getElementById('counterDhikrSelect').value;
+            let completedCount = isTargetMode ? (initialTarget - currentRemaining) : normalCount;
+
+            if(!userId || !dhikrId || completedCount <= 0) {
+                alert("பயனர், திக்ர் மற்றும் ஓதிய எண்ணிக்கை பூஜ்ஜியத்திற்கு மேல் உள்ளதா என சரிபார்க்கவும்!");
+                return;
+            }
+
+            let user = db.users.find(u => u.id == userId);
+            let dhikr = db.dhikrs.find(d => d.id == dhikrId);
+
+            db.logs.push({
+                userName: user ? user.name : 'Unknown',
+                dhikrName: dhikr ? dhikr.name : 'Unknown',
+                count: completedCount,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            });
+
+            saveData();
+            alert(`வெற்றிகரமாக சேமிக்கப்பட்டது! ஓதிய எண்ணிக்கை: ${completedCount}`);
+            resetCounterForTarget();
+        }
+
+        function addUser() {
+            let name = document.getElementById('newUserName').value.trim();
+            if(name) {
+                db.users.push({ id: Date.now(), name: name });
+                document.getElementById('newUserName').value = '';
+                saveData();
+            }
+        }
+
+        function removeUser(id) {
+            db.users = db.users.filter(u => u.id !== id);
+            saveData();
+        }
+
+        function addDhikrCategory() {
+            let name = document.getElementById('newDhikrName').value.trim();
+            let arabic = document.getElementById('newDhikrArabic').value.trim();
+            let meaning = document.getElementById('newDhikrMeaning').value.trim();
+
+            if(name) {
+                db.dhikrs.push({ id: Date.now(), name, arabic, meaning });
+                document.getElementById('newDhikrName').value = '';
+                document.getElementById('newDhikrArabic').value = '';
+                document.getElementById('newDhikrMeaning').value = '';
+                saveData();
+            }
+        }
+
         function removeDhikr(id) {
             db.dhikrs = db.dhikrs.filter(d => d.id !== id);
             saveData();
