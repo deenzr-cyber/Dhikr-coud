@@ -1,20 +1,28 @@
 <!DOCTYPE html>
-<html lang="ta">
+<html lang="ta" id="appHtmlRoot">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>இஸ்லாமிக் திக்ர் கவுண்டர் & மேலாண்மை</title>
+    <title>இஸ்லாமிக் திக்ர், துஆ & நன்மைகள் மேலாண்மை போர்ட்டல்</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF & html2canvas for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SheetJS for Excel Exporting -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#0284c7', // Light Blue
+                        primary: '#0284c7',
                         primaryDark: '#0369a1',
+                        emeraldAccent: '#059669',
+                        goldAccent: '#d97706',
                         bgLight: '#f0f9ff',
                         cardBg: '#ffffff'
                     }
@@ -22,272 +30,695 @@
             }
         }
     </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
 </head>
-<body class="bg-bgLight text-slate-800 font-sans pb-24">
+<body id="appBody" class="bg-bgLight text-slate-800 font-sans pb-28 min-h-screen text-base">
 
     <!-- Header -->
-    <header class="bg-primary text-white py-4 px-6 shadow-md flex justify-between items-center">
-        <div>
-            <h1 class="text-lg font-bold">🕌 இஸ்லாமிக் திக்ர் கவுண்டர்</h1>
-            <p id="appHeaderSubtitle" class="text-xs text-sky-100">Dhikr Counter & Multi-User Management</p>
-        </div>
-        <div id="currentUserBadge" class="text-xs bg-sky-800 px-3 py-1.5 rounded-full border border-sky-400 flex items-center gap-1">
-            <i class="fa-solid fa-user"></i> <span id="activeUserLabel">பயனர் தேர்வு செய்யப்படவில்லை</span>
+    <header class="bg-gradient-to-r from-sky-900 via-primary to-sky-900 text-white py-4 px-4 sm:px-6 shadow-lg sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl shadow-inner border border-white/20">
+                    🕌
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight">இஸ்லாமிக் திக்ர் & நன்மைகள் மேலாண்மை போர்ட்டல்</h1>
+                    <p class="text-[11px] text-sky-100 flex items-center gap-1">
+                        <span>Dhikr Counter, Daily Tasks, Opening/Ending Duas & Admin Portal</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center bg-white/15 px-2.5 py-1 rounded-lg border border-white/20 text-xs">
+                    <i class="fa-solid fa-language mr-1.5 text-amber-300"></i>
+                    <select id="languageSelect" onchange="changeLanguage()" class="bg-transparent text-white font-semibold outline-none cursor-pointer border-none text-xs">
+                        <option value="ta" class="text-slate-800" selected>தமிழ் (Tamil)</option>
+                        <option value="en" class="text-slate-800">English</option>
+                    </select>
+                </div>
+
+                <div id="currentUserBadge" class="text-xs bg-white/15 hover:bg-white/25 transition px-3 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 backdrop-blur-sm">
+                    <i class="fa-solid fa-user-circle text-amber-300"></i>
+                    <span id="activeUserLabel" class="font-medium">பயனர்...</span>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto p-4 mt-2">
+    <main class="max-w-6xl mx-auto p-3 sm:p-5">
 
-        <!-- TAB 1: User Personal Dashboard (பயனரின் தனி டாஷ்போர்டு) -->
-        <section id="tab-user-dashboard" class="tab-content block">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-4">
-                <div class="flex justify-between items-center border-b pb-2">
+        <!-- Global User Selection & Customer Customizer Bar -->
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-sky-100 mb-4 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-sm text-sky-900 font-semibold w-full md:w-auto">
+                <i class="fa-solid fa-users text-primary"></i>
+                <span data-i18n="current_user_label">தற்போதைய பயனர் / வாடிக்கையாளர்:</span>
+                <select id="globalUserSelect" onchange="onGlobalUserChange()" class="border border-sky-300 rounded-lg p-1.5 text-sm font-semibold text-slate-800 bg-sky-50 focus:ring-2 focus:ring-primary outline-none ml-2">
+                </select>
+            </div>
+
+            <!-- Customer Customization Options: Color & Font Size -->
+            <div class="flex items-center gap-3 flex-wrap w-full md:w-auto justify-end">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200">
+                    <i class="fa-solid fa-palette text-primary"></i> கலர்:
+                    <select id="themeColorSelect" onchange="changeThemeColor()" class="bg-white border rounded p-1 text-xs font-bold outline-none">
+                        <option value="sky">ஸ்கை ப்ளூ</option>
+                        <option value="emerald">எமரால்டு கிரீன்</option>
+                        <option value="amber">கோல்டன் அம்பர்</option>
+                        <option value="purple">ராயல் பர்ப்பிள்</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200">
+                    <i class="fa-solid fa-text-height text-primary"></i> எழுத்து வடிவம்:
+                    <button onclick="changeFontSize('small')" class="bg-white border px-2 py-0.5 rounded font-bold hover:bg-slate-100">சிறிய</button>
+                    <button onclick="changeFontSize('normal')" class="bg-white border px-2 py-0.5 rounded font-bold hover:bg-slate-100">நடுத்தர</button>
+                    <button onclick="changeFontSize('large')" class="bg-white border px-2 py-0.5 rounded font-bold hover:bg-slate-100">பெரிய</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. DASHBOARD TAB -->
+        <section id="tab-dashboard" class="tab-content block space-y-4">
+            <div class="bg-cardBg p-4 sm:p-6 rounded-2xl shadow-sm border border-sky-100 space-y-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 gap-2">
                     <div>
-                        <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-gauge-high mr-2"></i> எனது தனிப்பட்ட டாஷ்போர்டு</h2>
-                        <p class="text-xs text-slate-500">நீங்கள் ஓதிய திக்ர் விவரங்கள் மட்டும் இங்கே பிரத்யேகமாகக் காட்டப்படும்.</p>
+                        <h2 class="text-lg font-bold text-primary flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-xl"></i>
+                            <span data-i18n="dash_title">எனது திக்ர் & நன்மைகள் டாஷ்போர்டு</span>
+                        </h2>
+                        <p class="text-xs text-slate-500" data-i18n="dash_subtitle">நாட்கள், வாரங்கள், மாதங்கள் மற்றும் வருடங்கள் அடிப்படையில் ஓதிய எண்ணிக்கையும் சேர்ந்த நன்மைகளும்.</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md flex items-center gap-1">
+                        <i class="fa-solid fa-star text-amber-500"></i> <span data-i18n="virtues_active">நன்மைகள் கணக்கீடு செயலில் உள்ளது</span>
+                    </span>
+                </div>
+
+                <!-- Date Filter Selector Bar -->
+                <div class="bg-gradient-to-r from-sky-50 to-blue-50 p-3.5 rounded-xl border border-sky-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 text-xs font-bold text-sky-950 w-full sm:w-auto">
+                        <i class="fa-solid fa-calendar-check text-primary text-base"></i>
+                        <span>தேதி வாரியாக பார்க்க (Filter by Date):</span>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="date" id="filterSelectedDate" onchange="onFilterDateChange()" class="border border-sky-300 p-2 rounded-lg text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-primary outline-none">
+                        <button onclick="clearDateFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 py-2 rounded-lg text-xs transition">
+                            அனைத்தும் (Reset)
+                        </button>
                     </div>
                 </div>
 
-                <!-- Personal Analytics -->
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">இன்றைய திக்ர்</p>
-                        <p id="myStatDaily" class="text-lg font-bold text-primary">0</p>
+                <!-- Period Statistics Metrics -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 p-3.5 rounded-xl border border-sky-100 shadow-sm">
+                        <div class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <i class="fa-regular fa-calendar-day text-sky-600"></i> <span id="statDateLabel" data-i18n="today">இன்று</span>
+                        </div>
+                        <div class="mt-2 flex justify-between items-end">
+                            <div>
+                                <p id="statDailyCount" class="text-xl font-extrabold text-sky-900">0</p>
+                                <p class="text-[10px] text-slate-500" data-i18n="total_dhikr">மொத்த திக்ர்</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="statDailyVirtues" class="text-sm font-bold text-amber-600">+0</p>
+                                <p class="text-[10px] text-amber-700 font-medium" data-i18n="virtues">நன்மைகள்</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">இந்த மாத திக்ர்</p>
-                        <p id="myStatMonthly" class="text-lg font-bold text-primary">0</p>
+
+                    <div class="bg-gradient-to-br from-teal-50 to-emerald-50/60 p-3.5 rounded-xl border border-teal-100 shadow-sm">
+                        <div class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <i class="fa-regular fa-calendar-week text-teal-600"></i> <span data-i18n="this_week">இந்த வாரம்</span>
+                        </div>
+                        <div class="mt-2 flex justify-between items-end">
+                            <div>
+                                <p id="statWeeklyCount" class="text-xl font-extrabold text-teal-900">0</p>
+                                <p class="text-[10px] text-slate-500" data-i18n="total_dhikr">மொத்த திக்ர்</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="statWeeklyVirtues" class="text-sm font-bold text-amber-600">+0</p>
+                                <p class="text-[10px] text-amber-700 font-medium" data-i18n="virtues">நன்மைகள்</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-sky-50 p-3 rounded-lg border border-sky-100">
-                        <p class="text-xs text-slate-500">மொத்த திக்ர்</p>
-                        <p id="myStatTotal" class="text-lg font-bold text-primary">0</p>
+
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50/60 p-3.5 rounded-xl border border-indigo-100 shadow-sm">
+                        <div class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <i class="fa-regular fa-calendar-days text-indigo-600"></i> <span data-i18n="this_month">இந்த மாதம்</span>
+                        </div>
+                        <div class="mt-2 flex justify-between items-end">
+                            <div>
+                                <p id="statMonthlyCount" class="text-xl font-extrabold text-indigo-900">0</p>
+                                <p class="text-[10px] text-slate-500" data-i18n="total_dhikr">மொத்த திக்ர்</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="statMonthlyVirtues" class="text-sm font-bold text-amber-600">+0</p>
+                                <p class="text-[10px] text-amber-700 font-medium" data-i18n="virtues">நன்மைகள்</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-amber-50 to-orange-50/60 p-3.5 rounded-xl border border-amber-200 shadow-sm">
+                        <div class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <i class="fa-regular fa-calendar text-amber-600"></i> <span data-i18n="this_year">இந்த வருடம்</span>
+                        </div>
+                        <div class="mt-2 flex justify-between items-end">
+                            <div>
+                                <p id="statYearlyCount" class="text-xl font-extrabold text-amber-950">0</p>
+                                <p class="text-[10px] text-slate-500" data-i18n="total_dhikr">மொத்த திக்ர்</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="statYearlyVirtues" class="text-sm font-bold text-amber-600">+0</p>
+                                <p class="text-[10px] text-amber-700 font-medium" data-i18n="virtues">நன்மைகள்</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Personal Recited History -->
-                <div>
-                    <h3 class="font-bold text-sm text-slate-700 mb-2">நான் ஓதிய திக்ர் வரலாறு</h3>
-                    <div class="overflow-x-auto border rounded-lg">
-                        <table class="w-full text-sm text-left border-collapse">
-                            <thead>
-                                <tr class="bg-sky-50 text-sky-900 border-b border-sky-200">
-                                    <th class="p-2">திக்ர் பெயர்</th>
-                                    <th class="p-2">எண்ணிக்கை</th>
-                                    <th class="p-2">தேதி</th>
+                <!-- Grand Virtue Total Banner -->
+                <div class="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white rounded-xl p-4 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
+                            🎁
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm sm:text-base" data-i18n="grand_virtues_title">மொத்த நன்மைகள் சோலை (Total Virtues Earned)</h3>
+                            <p class="text-xs text-emerald-100" data-i18n="grand_virtues_desc">நீங்கள் ஓதிய அனைத்து திக்ர்களுக்கான நன்மைகளின் பிரம்மாண்டக் கூட்டுத்தொகை</p>
+                        </div>
+                    </div>
+                    <div class="bg-black/20 border border-white/20 px-5 py-2 rounded-xl text-center min-w-[160px]">
+                        <span id="grandTotalVirtues" class="text-2xl font-black text-amber-300">0</span>
+                        <span class="text-xs text-emerald-100 block font-medium" data-i18n="virtues_points">நன்மைகள் (Virtue Points)</span>
+                    </div>
+                </div>
+
+                <!-- Backup & Download Tools -->
+                <div class="bg-sky-50/80 p-4 rounded-xl border border-sky-200 space-y-3">
+                    <h3 class="font-bold text-sm text-sky-950 flex items-center gap-2">
+                        <i class="fa-solid fa-file-export text-primary"></i>
+                        <span data-i18n="backup_title">தரவு பேக்கப் & அறிக்கை எடுப்பது (Backup & Report Download)</span>
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportCustomerExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> <span>XL ஃபைலில் டவுன்லோட் (Excel XLSX)</span>
+                        </button>
+                        <button onclick="exportCustomerBackup('week', 'json')" class="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> <span data-i18n="backup_week">1 வார பேக்கப் (JSON)</span>
+                        </button>
+                        <button onclick="exportCustomerBackup('month', 'json')" class="bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> <span data-i18n="backup_month">1 மாத பேக்கப் (JSON)</span>
+                        </button>
+                        <button onclick="exportCustomerBackup('all', 'pdf')" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-pdf"></i> <span data-i18n="backup_pdf">PDF அறிக்கை பெற</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Table with Edit Log Feature -->
+                <div class="pt-2">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-history text-primary"></i>
+                            <span data-i18n="history_title">திக்ர் ஓதிய பதிவுகள் & திருத்தம் (Log History & Editing)</span>
+                        </h3>
+                        <span id="historyRecordCount" class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">0 பதிவுகள்</span>
+                    </div>
+                    <div id="pdfExportArea" class="bg-white p-2 rounded-xl">
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl custom-scrollbar">
+                            <table class="w-full text-xs sm:text-sm text-left">
+                                <thead class="bg-sky-50 text-sky-900 font-semibold border-b border-sky-200">
+                                    <tr>
+                                        <th class="p-3" data-i18n="th_date">தேதி</th>
+                                        <th class="p-3" data-i18n="th_name">திக்ர் பெயர்</th>
+                                        <th class="p-3 text-center" data-i18n="th_count">ஓதிய எண்ணிக்கை</th>
+                                        <th class="p-3 text-center" data-i18n="th_virtues">கிடைத்த நன்மைகள்</th>
+                                        <th class="p-3 text-right" data-i18n="th_action">நடவடிக்கை (Edit/Delete)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userHistoryTableBody" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. OPENING DUA TAB -->
+        <section id="tab-opening-dua" class="tab-content hidden space-y-4">
+            <div class="bg-cardBg p-5 sm:p-8 rounded-2xl shadow-sm border border-sky-100 space-y-6">
+                <div class="border-b pb-3 text-center">
+                    <h2 class="text-lg sm:text-xl font-bold text-primary flex items-center justify-center gap-2">
+                        <span>✨ ஆரம்ப துஆ & பிஸ்மி (Opening Duas with Counter)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">திக்ரைத் தொடங்குவதற்கு முன் ஓத வேண்டிய ஆரம்ப துஆக்கள் மற்றும் கவுண்டர் வசதி</p>
+                </div>
+
+                <div class="bg-gradient-to-b from-sky-50 to-blue-50/50 p-5 rounded-2xl border border-sky-200 space-y-4 shadow-sm text-center">
+                    <span class="bg-sky-200 text-sky-900 text-xs font-bold px-3 py-1 rounded-full">ஆரம்பம் (A'oodhu & Bismillah)</span>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-sky-950 font-serif leading-loose" dir="rtl">
+                        أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ <br>
+                        بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+                    </p>
+                    <p class="text-sm font-bold text-primary">
+                        அவூது பில்லாஹி மினஷ் ஷைத்தானிர் ரஜீம் <br>
+                        பிஸ்மில்லாஹிர் ரஹ்மானிர் ரஹீம்
+                    </p>
+                    
+                    <div class="bg-white p-3 rounded-xl border border-sky-200 max-w-sm mx-auto flex items-center justify-between gap-2">
+                        <div class="text-left">
+                            <span class="text-xs text-slate-500 block">கவுண்டர் எண்ணிக்கை:</span>
+                            <span id="openCount1" class="text-xl font-black text-primary">0</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="adjustOpeningCounter(1, -1)" class="w-9 h-9 bg-rose-100 text-rose-700 rounded-lg font-bold"><i class="fa-solid fa-minus"></i></button>
+                            <button onclick="adjustOpeningCounter(1, 1)" class="w-12 h-9 bg-primary text-white rounded-lg font-bold">+1</button>
+                            <button onclick="saveOpeningDuaLog('அவூது & பிஸ்மில்லாஹ்', 1)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold">சேமி</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-amber-50/80 to-amber-100/40 p-5 rounded-2xl border border-amber-200 space-y-4 shadow-sm text-center">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">ஆரம்ப துஆ (ஸலவாத்)</span>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">
+                            நன்மை: 1,000 / முறை
+                        </span>
+                    </div>
+
+                    <p class="text-2xl sm:text-3xl font-extrabold text-amber-950 font-serif leading-relaxed" dir="rtl">
+                        اللَّهُمَّ صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ وَعَلَى آلِ سَيِّدِنَا مُحَمَّدٍ وَبَارِكْ وَسَلِّمْ عَلَيْهِ
+                    </p>
+
+                    <p class="text-sm font-bold text-amber-900">
+                        அல்லாஹும்ம ஸல்லி அலா செய்யதினா முஹம்மதின் வ அலா ஆலி செய்யதினா முஹம்மதின் வபாரிக் வஸல்லிம் அலைஹி
+                    </p>
+
+                    <div class="bg-white p-3 rounded-xl border border-amber-200 max-w-sm mx-auto flex items-center justify-between gap-2">
+                        <div class="text-left">
+                            <span class="text-xs text-slate-500 block">கவுண்டர் எண்ணிக்கை:</span>
+                            <span id="openCount2" class="text-xl font-black text-amber-600">3</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="adjustOpeningCounter(2, -1)" class="w-9 h-9 bg-rose-100 text-rose-700 rounded-lg font-bold"><i class="fa-solid fa-minus"></i></button>
+                            <button onclick="adjustOpeningCounter(2, 1)" class="w-12 h-9 bg-amber-600 text-white rounded-lg font-bold">+1</button>
+                            <button onclick="saveOpeningDuaLog('ஸலவாத் ஆரம்ப துஆ', 2, 1000)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold">சேமி</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. COUNTER & FULL LIST TAB -->
+        <section id="tab-counter" class="tab-content hidden space-y-5">
+            <div class="bg-cardBg p-5 sm:p-8 rounded-2xl shadow-sm border border-sky-100 space-y-6 text-center">
+                <div class="max-w-md mx-auto space-y-3">
+                    <h2 class="text-lg font-bold text-primary flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-fingerprint text-2xl"></i>
+                        <span data-i18n="counter_title">டிஜிட்டல் திக்ர் கவுண்டர்</span>
+                    </h2>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1" data-i18n="select_dhikr">ஓத வேண்டிய திக்ரைத் தேர்ந்தெடுக்கவும்:</label>
+                        <select id="counterDhikrSelect" onchange="onCounterDhikrChange()" class="w-full border-2 border-sky-200 rounded-xl p-2.5 text-sm font-bold text-sky-900 bg-sky-50/50 focus:border-primary outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-b from-sky-50 to-sky-100/40 p-5 rounded-2xl border border-sky-200 shadow-inner max-w-2xl mx-auto space-y-2">
+                    <p id="counterDisplayArabic" class="text-2xl sm:text-3xl font-extrabold text-sky-950 font-serif leading-relaxed" dir="rtl">
+                        سُبْحَانَ اللَّهِ
+                    </p>
+                    <p id="counterDisplayPronunciation" class="text-sm font-bold text-primary">
+                        (சுப்ஹானல்லாஹ்)
+                    </p>
+                    
+                    <div class="pt-2 flex flex-wrap justify-center gap-2 text-xs">
+                        <span class="bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-semibold border border-amber-200 flex items-center gap-1">
+                            <i class="fa-solid fa-award text-amber-600"></i>
+                            1 திக்ருக்கு <span id="counterDisplayVirtuePerUnit" class="font-bold">10</span> நன்மைகள்
+                        </span>
+                        <span class="bg-emerald-100 text-emerald-900 px-3 py-1 rounded-full font-semibold border border-emerald-200 flex items-center gap-1">
+                            <i class="fa-solid fa-bullseye text-emerald-600"></i>
+                            இலக்கு: <span id="counterDisplayRecommendedTarget" class="font-bold">33</span>/நாள்
+                        </span>
+                    </div>
+                </div>
+
+                <div class="max-w-md mx-auto space-y-3">
+                    <div class="flex justify-center items-center gap-4 text-xs font-medium bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                        <label class="flex-1 py-1.5 rounded-lg cursor-pointer text-center transition flex items-center justify-center gap-1.5" id="modeTargetLabel">
+                            <input type="radio" name="countMode" value="target" checked onclick="toggleCounterMode('target')" class="hidden">
+                            <i class="fa-solid fa-arrow-down-short-wide"></i> டார்கெட் முறை (Reverse)
+                        </label>
+                        <label class="flex-1 py-1.5 rounded-lg cursor-pointer text-center transition flex items-center justify-center gap-1.5" id="modeNormalLabel">
+                            <input type="radio" name="countMode" value="normal" onclick="toggleCounterMode('normal')" class="hidden">
+                            <i class="fa-solid fa-arrow-up-1-9"></i> சாதாரண முறை (Normal)
+                        </label>
+                    </div>
+
+                    <div id="targetBox" class="flex justify-center items-center gap-2 bg-sky-50/80 p-2 rounded-xl border border-sky-200 text-xs">
+                        <span class="font-semibold text-sky-900">இன்றைய இலக்கு (Target):</span>
+                        <input type="number" id="targetInputCount" value="33" min="1" onchange="resetCounterForTarget()" class="border border-sky-300 p-1 rounded-lg w-20 text-center font-bold text-slate-800 bg-white">
+                        <button onclick="resetCounterForTarget()" class="bg-sky-200 hover:bg-sky-300 text-sky-800 px-2.5 py-1 rounded-lg font-bold">ரீசெட்</button>
+                    </div>
+                </div>
+
+                <div class="py-2">
+                    <div class="w-44 h-44 sm:w-48 sm:h-48 mx-auto rounded-full bg-gradient-to-tr from-sky-600 to-primary text-white flex flex-col items-center justify-center shadow-xl border-4 border-white ring-4 ring-sky-200">
+                        <span id="currentCountNum" class="text-5xl sm:text-6xl font-black tracking-tight">33</span>
+                        <span id="targetStatusText" class="text-[11px] text-sky-100 mt-1 font-medium">மீதம்: 33 / 33</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-center items-center gap-6 pt-1">
+                    <button onclick="adjustCount(-1)" class="w-14 h-14 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl text-xl font-bold shadow-md active:scale-90 transition border border-rose-300 flex items-center justify-center">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <button onclick="adjustCount(1)" class="w-24 h-24 bg-gradient-to-b from-primary to-primaryDark hover:from-primaryDark hover:to-sky-900 text-white rounded-3xl text-3xl font-bold shadow-xl active:scale-95 transition border-2 border-sky-200 flex flex-col items-center justify-center gap-1">
+                        <i class="fa-solid fa-fingerprint"></i>
+                        <span class="text-[10px] uppercase font-semibold">TAP / +1</span>
+                    </button>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-center items-center gap-3">
+                    <div class="text-xs text-slate-600">
+                        சேமிக்கப்படும் திக்ர்: <span id="savePreviewCount" class="font-bold text-primary">0</span> | நன்மைகள்: <span id="savePreviewVirtues" class="font-bold text-amber-600">0</span>
+                    </div>
+                    <button onclick="saveCurrentDhikrLog()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>பதிவைச் சேமிக்கவும் (Save Log)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-cardBg p-4 sm:p-6 rounded-2xl shadow-sm border border-sky-100 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 gap-2">
+                    <div>
+                        <h3 class="text-base font-bold text-sky-950 flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark text-primary"></i>
+                            <span>அனைத்து திக்ர் & நன்மைகள் அட்டவணை (Full Dhikr List)</span>
+                        </h3>
+                        <p class="text-xs text-slate-500">2026 டேட்டாபேஸின் அனைத்து திக்ர், அரபி உரை மற்றும் நன்மைகளின் விபரம்</p>
+                    </div>
+                    <input type="text" id="dhikrSearchInput" onkeyup="filterDhikrList()" placeholder="திக்ர் பெயர் தேட..." class="border border-sky-200 p-2 rounded-lg text-xs w-full sm:w-64 bg-sky-50 focus:ring-2 focus:ring-primary outline-none">
+                </div>
+
+                <div id="fullDhikrListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto custom-scrollbar p-1">
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. DAILY TASKS TAB -->
+        <section id="tab-daily-tasks" class="tab-content hidden space-y-4">
+            <div class="bg-cardBg p-5 sm:p-8 rounded-2xl shadow-sm border border-sky-100 space-y-5">
+                <div class="border-b pb-3 text-center">
+                    <h2 class="text-lg sm:text-xl font-bold text-primary flex items-center justify-center gap-2">
+                        <span>📋 டெய்லி டாஸ்க் & திக்ர் தெரிவுகள் (Daily Tasks & 5 Options)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">கீழே உள்ள 5 விதமான ஆப்ஷன்களில் ஒன்றைத் தேர்ந்தெடுத்து உங்களது தினசரி திக்ர் பட்டியலைப் பார்வையிடவும், கவுண்டிங் மற்றும் ரீசெட் செய்யவும்.</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="dailyTaskOptionsContainer">
+                </div>
+
+                <div class="bg-gradient-to-r from-sky-50 to-blue-50 p-4 rounded-xl border border-sky-200 space-y-3">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <h3 id="activeTaskOptionTitle" class="font-bold text-sm text-sky-950">தேர்ந்தெடுக்கப்பட்ட ஆப்ஷன் விவரம்</h3>
+                        <span id="activeTaskOptionCountBadge" class="text-xs bg-sky-200 text-sky-900 font-bold px-3 py-1 rounded-full">0 திக்ர்கள்</span>
+                    </div>
+
+                    <div class="overflow-x-auto bg-white rounded-xl border border-sky-100">
+                        <table class="w-full text-xs sm:text-sm text-left">
+                            <thead class="bg-sky-100 text-sky-900 font-semibold border-b">
+                                <tr>
+                                    <th class="p-3">வ.எண்</th>
+                                    <th class="p-3">திக்ர் பெயர்</th>
+                                    <th class="p-3 text-center">இலக்கு (Target)</th>
+                                    <th class="p-3 text-center">நன்மைகள்</th>
+                                    <th class="p-3 text-right">செயல்பாடு (Action/Reset)</th>
                                 </tr>
                             </thead>
-                            <tbody id="myRecitedTableBody"></tbody>
+                            <tbody id="dailyTaskTableBody" class="divide-y divide-slate-100">
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 2: Counter -->
-        <section id="tab-counter" class="tab-content hidden">
-            <div class="bg-cardBg p-6 rounded-xl shadow-sm border border-sky-100 text-center space-y-4">
-                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-fingerprint mr-2"></i> திக்ர் கவுண்டர்</h2>
-
-                <!-- Select User & Dhikr -->
-                <div class="flex flex-col md:flex-row gap-2 justify-center">
-                    <select id="counterUserSelect" onchange="onUserSelectChange()" class="border p-2 rounded text-sm bg-slate-50 font-semibold text-sky-900 border-sky-300"></select>
-                    <select id="counterDhikrSelect" onchange="updateCounterDisplayInfo()" class="border p-2 rounded text-sm bg-slate-50 font-semibold border-sky-300"></select>
+        <!-- 5. ENDING DUA TAB -->
+        <section id="tab-ending-dua" class="tab-content hidden space-y-4">
+            <div class="bg-cardBg p-5 sm:p-8 rounded-2xl shadow-sm border border-sky-100 space-y-5">
+                <div class="border-b pb-3 text-center">
+                    <h2 class="text-lg sm:text-xl font-bold text-emerald-800 flex items-center justify-center gap-2">
+                        <span>🤲 முடிவு துஆக்கள் & கவுண்டர் (Ending Duas with Counter)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">திக்ர் ஓதி முடித்ததும் ஓத வேண்டிய நிறைவு துஆக்கள், கவுண்டர் மற்றும் சேமிக்கும் வசதி</p>
                 </div>
 
-                <div class="bg-sky-50 p-4 rounded-lg border border-sky-200">
-                    <p id="displayArabic" class="text-2xl font-bold text-sky-900 mb-1">سُبْحَانَ اللَّهِ</p>
-                    <p id="displayMeaning" class="text-xs text-slate-600">அல்லாஹ் தூய்மையானவன்</p>
-                </div>
-
-                <div class="flex justify-center items-center gap-4 text-sm">
-                    <label class="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="countMode" value="target" checked onclick="toggleMode('target')"> டார்கெட் முறை (Reverse)
-                    </label>
-                    <label class="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="countMode" value="normal" onclick="toggleMode('normal')"> சாதாரண முறை (Normal)
-                    </label>
-                </div>
-
-                <div id="targetBox" class="flex justify-center items-center gap-2">
-                    <span class="text-sm font-medium">டார்கெட் இலக்கு:</span>
-                    <input type="number" id="targetInputCount" value="33" min="1" onchange="resetCounterForTarget()" class="border p-1 rounded w-20 text-center text-sm font-bold">
-                </div>
-
-                <div class="my-6">
-                    <span id="currentCountNum" class="text-6xl font-extrabold text-primary">33</span>
-                    <p id="targetStatusText" class="text-xs text-slate-500 mt-1">மீதமுள்ள திக்ர்: 33 / 33</p>
-                </div>
-
-                <div class="flex justify-center gap-6">
-                    <button onclick="adjustCount(-1)" class="w-16 h-16 bg-rose-500 text-white rounded-full text-2xl font-bold shadow hover:bg-rose-600 active:scale-95 transition">-</button>
-                    <button onclick="adjustCount(1)" class="w-16 h-16 bg-primary text-white rounded-full text-2xl font-bold shadow hover:bg-primaryDark active:scale-95 transition">+</button>
-                </div>
-
-                <div class="pt-2">
-                    <button onclick="saveCurrentDhikrLog()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow hover:bg-emerald-700 transition">
-                        பதிவைச் சேமிக்கவும் (Save Log)
-                    </button>
+                <div id="endingDuasContainer" class="space-y-4">
                 </div>
             </div>
         </section>
 
-        <!-- TAB 3: Dhikr List -->
-        <section id="tab-dhikr-list" class="tab-content hidden">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4">
-                <h2 class="text-lg font-bold text-primary mb-3"><i class="fa-solid fa-book-open mr-2"></i> திக்ர் பட்டியல் (அரபி & தமிழ்)</h2>
-                <div id="dhikrCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-            </div>
-        </section>
-
-        <!-- TAB 4: Daily Tasks -->
-        <section id="tab-tasks" class="tab-content hidden">
-            <div class="bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 mb-4 space-y-3">
-                <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-calendar-day mr-2"></i> டெய்லி டாஸ்க் (Daily Tasks)</h2>
-                <div id="dailyTaskList" class="space-y-2 mt-3"></div>
-            </div>
-        </section>
-
-        <!-- TAB 5: Admin Panel (Protected System) -->
-        <section id="tab-admin" class="tab-content hidden">
-            <!-- Password Gate -->
-            <div id="adminAuthGate" class="bg-cardBg p-6 rounded-xl shadow-sm border border-sky-100 text-center max-w-md mx-auto space-y-4">
-                <div class="w-12 h-12 bg-sky-100 text-primary rounded-full flex items-center justify-center mx-auto text-xl">
+        <!-- 6. ADMIN PORTAL TAB -->
+        <section id="tab-admin" class="tab-content hidden space-y-4">
+            <div id="adminAuthGate" class="bg-cardBg p-6 sm:p-8 rounded-2xl shadow-md border border-sky-100 text-center max-w-md mx-auto space-y-5 my-6">
+                <div class="w-14 h-14 bg-sky-100 text-primary rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-sm border border-sky-200">
                     <i class="fa-solid fa-user-shield"></i>
                 </div>
-                <h3 class="font-bold text-slate-700">அட்மின் லாகின் (Admin Login)</h3>
-                <div class="space-y-2 text-left">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base">அட்மின் உள்நுழைவு (Admin Login)</h3>
+                    <p class="text-xs text-slate-500 mt-1">திக்ர், துஆ, டெய்லி டாஸ்க் மற்றும் பயனர் சேர்ப்பதற்கு உள்நுழையவும்</p>
+                </div>
+                <div class="space-y-3 text-left">
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">பயனர் பெயர் (Username)</label>
-                        <input type="text" id="adminUserAuthInput" placeholder="azar" class="border p-2 rounded text-sm w-full mt-1">
+                        <label class="text-xs font-semibold text-slate-600 block mb-1">பயனர் பெயர் (Username)</label>
+                        <input type="text" id="adminUserAuthInput" placeholder="azar" class="border border-slate-300 p-2.5 rounded-xl text-sm w-full focus:ring-2 focus:ring-primary outline-none">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">கடவுச்சொல் (Password)</label>
-                        <input type="password" id="adminPassAuthInput" placeholder="••••••••" class="border p-2 rounded text-sm w-full mt-1">
+                        <label class="text-xs font-semibold text-slate-600 block mb-1">கடவுச்சொல் (Password)</label>
+                        <input type="password" id="adminPassAuthInput" placeholder="••••••••" class="border border-slate-300 p-2.5 rounded-xl text-sm w-full focus:ring-2 focus:ring-primary outline-none">
                     </div>
                 </div>
-                <button onclick="checkAdminLogin()" class="bg-primary text-white px-6 py-2 rounded text-sm font-bold w-full shadow">உள்நுழைக</button>
+                <button onclick="checkAdminLogin()" class="bg-primary hover:bg-primaryDark text-white px-6 py-2.5 rounded-xl text-sm font-bold w-full shadow-md transition">
+                    உள்நுழைக
+                </button>
             </div>
 
-            <!-- Admin Controls -->
-            <div id="adminControls" class="hidden bg-cardBg p-4 rounded-xl shadow-sm border border-sky-100 space-y-6">
-                <div class="flex justify-between items-center border-b pb-2">
-                    <h2 class="text-lg font-bold text-primary"><i class="fa-solid fa-gears mr-2"></i> அட்மின் மேலாண்மை பேனல்</h2>
-                    <button onclick="logoutAdmin()" class="text-xs text-rose-500 font-bold bg-rose-50 px-2 py-1 rounded border border-rose-200">வெளியேறு</button>
+            <div id="adminControls" class="hidden bg-cardBg p-4 sm:p-6 rounded-2xl shadow-sm border border-sky-100 space-y-6">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-lg font-bold text-primary flex items-center gap-2">
+                        <i class="fa-solid fa-gears"></i>
+                        <span>அட்மின் நிர்வகிப்பு பேனல் (Admin Management Panel)</span>
+                    </h2>
+                    <button onclick="logoutAdmin()" class="text-xs text-rose-600 font-bold bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 transition">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i>வெளியேறு
+                    </button>
                 </div>
 
-                <!-- Update Admin Credentials -->
-                <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
-                    <h3 class="font-semibold text-sm text-amber-900"><i class="fa-solid fa-key mr-1"></i> அட்மின் லாகின் பாஸ்வேர்ட் மாற்ற</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <input type="text" id="updateAdminUser" placeholder="புதிய பயனர் பெயர்" class="border p-2 rounded text-sm bg-white">
-                        <input type="password" id="updateAdminPass" placeholder="புதிய கடவுச்சொல்" class="border p-2 rounded text-sm bg-white">
-                    </div>
-                    <button onclick="updateAdminCredentials()" class="bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-amber-700">அட்மின் விபரங்களை புதுப்பி</button>
+                <div class="flex flex-wrap gap-2 border-b pb-3">
+                    <button onclick="switchAdminTab('dhikrTab')" id="admBtnDhikr" class="px-4 py-2 rounded-lg text-xs font-bold bg-primary text-white shadow">திக்ர் & துஆ மேலாண்மை</button>
+                    <button onclick="switchAdminTab('taskTab')" id="admBtnTask" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700">டெய்லி டாஸ்க் ஆப்ஷன்கள்</button>
+                    <button onclick="switchAdminTab('userTab')" id="admBtnUser" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700">பயனர்கள் & செட்டிங்ஸ்</button>
                 </div>
 
-                <!-- Add New User/Customer -->
-                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
-                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய பயனரைச் சேர் (Add Customer)</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newUserName" placeholder="வாடிக்கையாளர் பெயர்" class="border p-2 rounded text-sm flex-1">
-                        <button onclick="addUser()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold">சேர்</button>
-                    </div>
-                </div>
-
-                <!-- Customer Inspection & Analytics (Admin Only View) -->
-                <div class="p-3 bg-slate-50 rounded-lg border space-y-3">
-                    <h3 class="font-semibold text-sm text-slate-800"><i class="fa-solid fa-users-viewfinder mr-1"></i> வாடிக்கையாளர்கள் தனிப்பட்ட திக்ர் அறிக்கைகள் (Customer Inspection)</h3>
-                    <p class="text-xs text-slate-500">வாடிக்கையாளரின் பெயரை கிளிக் செய்து அவர்கள் ஓதிய திக்ர்களை அட்மின் பார்க்கவும்:</p>
-                    
-                    <select id="adminInspectUserSelect" onchange="renderAdminUserInspection()" class="border p-2 rounded text-sm w-full bg-white font-semibold text-primary"></select>
-
-                    <div id="adminUserInspectCard" class="bg-white p-3 rounded border text-sm space-y-2">
-                        <!-- Inspection data renders here -->
-                    </div>
-                </div>
-
-                <!-- Overall All Users Summary -->
-                <div>
-                    <h3 class="font-semibold text-sm text-slate-800 mb-2">ஒட்டுமொத்த பயனர்களின் திக்ர் புள்ளிவிவரங்கள்</h3>
-                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div class="bg-sky-50 p-2 rounded border">
-                            <p class="text-slate-500">இன்று மொத்த திக்ர்</p>
-                            <p id="adminAllDaily" class="font-bold text-primary text-base">0</p>
+                <!-- Admin Tab 1: Dhikr & Reordering -->
+                <div id="adminTabDhikr" class="space-y-4">
+                    <div class="p-4 bg-sky-50/70 rounded-xl border border-sky-200 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-sm text-sky-950 flex items-center gap-2">
+                                <i class="fa-solid fa-kaaba text-primary"></i>
+                                <span id="dhikrFormTitle">புதிய திக்ர் மற்றும் நன்மைகள் சேர் (Add/Edit Dhikr)</span>
+                            </h3>
+                            <button id="cancelDhikrEditBtn" onclick="resetDhikrForm()" class="hidden text-xs text-rose-600 underline font-semibold">ரத்து செய்</button>
                         </div>
-                        <div class="bg-sky-50 p-2 rounded border">
-                            <p class="text-slate-500">இம்மாத மொத்த திக்ர்</p>
-                            <p id="adminAllMonthly" class="font-bold text-primary text-base">0</p>
+
+                        <input type="hidden" id="adminEditDhikrId" value="">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">திக்ர் / துஆ பெயர் (Name)</label>
+                                <input type="text" id="adminDhikrName" placeholder="எ.கா: சுப்ஹானல்லாஹ்" class="border p-2 rounded-lg text-sm w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">அரபி உரை (Arabic Text)</label>
+                                <input type="text" id="adminDhikrArabic" placeholder="سُبْحَانَ اللَّهِ" class="border p-2 rounded-lg text-sm w-full bg-white font-serif" dir="rtl">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">தமிழ் உச்சரிப்பு (Pronunciation)</label>
+                                <input type="text" id="adminDhikrPronunciation" placeholder="சுப்ஹானல்லாஹி வபிஹம்திஹி" class="border p-2 rounded-lg text-sm w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">ஓத எண்ணிக்கை (Target Count)</label>
+                                <input type="number" id="adminDhikrTarget" placeholder="33" value="33" class="border p-2 rounded-lg text-sm w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">நன்மைகள் (Virtue Reward Points)</label>
+                                <input type="number" id="adminDhikrVirtues" placeholder="10" value="10" class="border p-2 rounded-lg text-sm w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600 block mb-1">வகைப்பாடு (Category)</label>
+                                <select id="adminDhikrCategory" class="border p-2 rounded-lg text-sm w-full bg-white font-semibold">
+                                    <option value="main">பிரதான திக்ர் (Main Dhikr)</option>
+                                    <option value="opening">ஆரம்ப துஆ (Opening Dua)</option>
+                                    <option value="ending">முடிவு துஆ (Ending Dua)</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="bg-sky-50 p-2 rounded border">
-                            <p class="text-slate-500">ஒட்டுமொத்த திக்ர்</p>
-                            <p id="adminAllTotal" class="font-bold text-primary text-base">0</p>
+
+                        <button onclick="saveDhikrCategory()" id="saveDhikrBtn" class="bg-primary hover:bg-primaryDark text-white px-5 py-2 rounded-xl text-xs font-bold shadow transition">
+                            திக்ர் விபரங்களைச் சேமி
+                        </button>
+                    </div>
+
+                    <!-- Reordering List -->
+                    <div class="p-4 bg-amber-50/70 rounded-xl border border-amber-200 space-y-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-amber-200 pb-2">
+                            <h3 class="font-bold text-sm text-amber-950 flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-down-up-3-2 text-amber-600"></i>
+                                <span>துஆக்கள் பட்டியல் ரீ-அரேஞ்ச்மென்ட் & எடிட்/டெிலீட் (Reordering List)</span>
+                            </h3>
+                            <button onclick="saveReorderedList()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow transition flex items-center gap-1">
+                                <i class="fa-solid fa-floppy-disk"></i> <span>வரிசை அமைப்புகளைச் சேமி (Save Order)</span>
+                            </button>
+                        </div>
+                        <div class="border rounded-xl bg-white max-h-80 overflow-y-auto custom-scrollbar p-2">
+                            <ul id="adminReorderDhikrList" class="space-y-2"></ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Add Dhikr Category -->
-                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
-                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய திக்ர் சேர் (Add Dhikr)</h3>
-                    <div class="space-y-2">
-                        <input type="text" id="newDhikrName" placeholder="திக்ர் பெயர் (எ.கா: சுப்ஹானல்லாஹ்)" class="border p-2 rounded text-sm w-full">
-                        <input type="text" id="newDhikrArabic" placeholder="அரபி உரை (Arabic Text)" class="border p-2 rounded text-sm w-full">
-                        <input type="text" id="newDhikrMeaning" placeholder="தமிழ் அர்த்தம்" class="border p-2 rounded text-sm w-full">
-                        <button onclick="addDhikrCategory()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold w-full">திக்ரைச் சேர்</button>
+                <!-- Admin Tab 2: Daily Tasks Configuration -->
+                <div id="adminTabTask" class="hidden space-y-4">
+                    <div class="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-3">
+                        <h3 class="font-bold text-sm text-emerald-950 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-600"></i>
+                            <span>டெய்லி டாஸ்க் 5 ஆப்ஷன்கள் மேலாண்மை (Manage 5 Task Options)</span>
+                        </h3>
+                        <p class="text-xs text-slate-600">ஒவ்வொரு ஆப்ஷனிலும் எந்தெந்த திக்ர்கள் இடம்பெற வேண்டும் என்பதை அட்மின் இங்கே கட்டமைக்கலாம்.</p>
+                        
+                        <div class="space-y-3" id="adminTaskOptionsConfigList">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Add Daily Task -->
-                <div class="p-3 bg-sky-50 rounded-lg border border-sky-100">
-                    <h3 class="font-semibold text-sm text-sky-900 mb-2">புதிய டெய்லி டாஸ்க் அமை</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newTaskInput" placeholder="டாஸ்க் விபரம்..." class="border p-2 rounded text-sm flex-1">
-                        <button onclick="addDailyTask()" class="bg-primary text-white px-4 py-2 rounded text-sm font-semibold">டாஸ்க் சேர்</button>
+                <!-- Admin Tab 3: Users & Settings -->
+                <div id="adminTabUser" class="hidden space-y-4">
+                    <div class="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-3">
+                        <h3 class="font-bold text-sm text-emerald-950 flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus text-emerald-600"></i>
+                            <span>பயனர் / வாடிக்கையாளர் மேலாண்மை (Add User)</span>
+                        </h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="newUserName" placeholder="புதிய பயனர் பெயர் (எ.கா: அஹமத்)" class="border p-2 rounded-lg text-sm flex-1 bg-white">
+                            <button onclick="addUser()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow">
+                                புதிய பயனரைச் சேர்
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border p-3 rounded-xl bg-slate-50 space-y-2">
+                            <h4 class="font-bold text-xs text-slate-700 border-b pb-1">பயனர்கள் பட்டியல் (Delete Users)</h4>
+                            <ul id="adminUserList" class="space-y-1.5 text-xs max-h-56 overflow-y-auto custom-scrollbar"></ul>
+                        </div>
+
+                        <div class="border p-3 rounded-xl bg-slate-50 space-y-2">
+                            <h4 class="font-bold text-xs text-slate-700 border-b pb-1"><i class="fa-solid fa-lock mr-1"></i> அட்மின் செட்டிங்ஸ்</h4>
+                            <div class="space-y-2">
+                                <input type="text" id="updateAdminUser" placeholder="புதிய அட்மின் பயனர் பெயர்" class="border p-2 rounded-lg text-xs bg-white w-full">
+                                <input type="password" id="updateAdminPass" placeholder="புதிய கடவுச்சொல்" class="border p-2 rounded-lg text-xs bg-white w-full">
+                                <div class="flex gap-2">
+                                    <button onclick="updateAdminCredentials()" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
+                                        பாஸ்வேர்ட் புதுப்பி
+                                    </button>
+                                    <button onclick="resetAllData()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
+                                        அனைத்துத் தரவும் அழி
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Management Lists -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="border p-3 rounded bg-slate-50">
-                        <h4 class="font-semibold text-xs text-slate-600 mb-2">வாடிக்கையாளர்கள் மேலாண்மை (Remove)</h4>
-                        <ul id="adminUserList" class="space-y-1 text-sm"></ul>
-                    </div>
-                    <div class="border p-3 rounded bg-slate-50">
-                        <h4 class="font-semibold text-xs text-slate-600 mb-2">திக்ர் மேலாண்மை (Remove)</h4>
-                        <ul id="adminDhikrList" class="space-y-1 text-sm"></ul>
-                    </div>
-                </div>
-
-                <div class="pt-2 flex gap-2">
-                    <button onclick="exportData()" class="bg-emerald-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-download mr-1"></i> பேக்கப் (Backup)</button>
-                    <button onclick="resetAllData()" class="bg-rose-600 text-white px-3 py-2 rounded text-xs"><i class="fa-solid fa-trash mr-1"></i> அனைத்துத் தரவையும் அழி</button>
-                </div>
             </div>
         </section>
-
     </main>
 
-    <!-- Bottom App Navigation Bar -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-sky-100 shadow-lg flex justify-around py-3 px-2 z-40">
-        <button onclick="switchTab('tab-user-dashboard', this)" class="nav-btn flex flex-col items-center text-primary font-semibold text-xs">
-            <i class="fa-solid fa-gauge-high text-lg mb-1"></i>டாஷ்போர்டு
+    <!-- Modal Dialog for Editing Log Entry -->
+    <div id="editLogModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-sky-100">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-sm text-sky-950 flex items-center gap-1.5">
+                    <i class="fa-solid fa-pen-to-square text-primary"></i>
+                    <span>பதிவை எடிட் செய்க (Edit Recitation Log)</span>
+                </h3>
+                <button onclick="closeLogModal()" class="text-slate-400 hover:text-slate-600 font-bold text-base">&times;</button>
+            </div>
+
+            <input type="hidden" id="modalLogId">
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">தேதி (Date)</label>
+                    <input type="date" id="modalLogDate" class="w-full border p-2 rounded-lg bg-slate-50 font-semibold text-slate-800">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">திக்ர் பெயர் (Dhikr Name)</label>
+                    <select id="modalLogDhikrSelect" class="w-full border p-2 rounded-lg bg-slate-50 font-semibold text-slate-800">
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">ஓதிய எண்ணிக்கை (Recited Count)</label>
+                    <input type="number" id="modalLogCount" min="1" class="w-full border p-2 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-primary outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button onclick="closeLogModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">ரத்து</button>
+                <button onclick="saveEditedLogModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primaryDark text-white shadow">சேமிக்க (Update Log)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Footer Bar - Icons positioned tightly and closely together -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-sky-100 shadow-2xl flex justify-center gap-2 sm:gap-6 py-2 px-1 z-40">
+        <button onclick="openTab('tab-dashboard', this)" class="nav-btn flex flex-col items-center text-primary font-bold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-chart-pie text-base mb-0.5"></i><span data-i18n="nav_dashboard">டாஷ்போர்டு</span>
         </button>
-        <button onclick="switchTab('tab-counter', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
-            <i class="fa-solid fa-fingerprint text-lg mb-1"></i>கவுண்டர்
+        <button onclick="openTab('tab-opening-dua', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary font-semibold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-hands-praying text-base mb-0.5"></i><span data-i18n="nav_opening">ஆரம்ப துஆ</span>
         </button>
-        <button onclick="switchTab('tab-dhikr-list', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
-            <i class="fa-solid fa-book text-lg mb-1"></i>திக்ர் பட்டியல்
+        <button onclick="openTab('tab-counter', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary font-semibold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-fingerprint text-base mb-0.5"></i><span data-i18n="nav_counter">கவுண்டர் & பட்டியல்</span>
         </button>
-        <button onclick="switchTab('tab-tasks', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
-            <i class="fa-solid fa-tasks text-lg mb-1"></i>டெய்லி டாஸ்க்
+        <button onclick="openTab('tab-daily-tasks', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary font-semibold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-list-check text-base mb-0.5"></i><span>டெய்லி டாஸ்க்</span>
         </button>
-        <button onclick="switchTab('tab-admin', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary text-xs">
-            <i class="fa-solid fa-user-shield text-lg mb-1"></i>அட்மின்
+        <button onclick="openTab('tab-ending-dua', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary font-semibold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-book-open text-base mb-0.5"></i><span data-i18n="nav_ending">முடிவு துஆக்கள்</span>
+        </button>
+        <button onclick="openTab('tab-admin', this)" class="nav-btn flex flex-col items-center text-slate-400 hover:text-primary font-semibold text-[10px] sm:text-[11px] py-1 px-2 rounded-xl transition">
+            <i class="fa-solid fa-user-shield text-base mb-0.5"></i><span data-i18n="nav_admin">அட்மின்</span>
         </button>
     </nav>
 
-    <!-- JavaScript Application Logic -->
     <script>
-        let db = JSON.parse(localStorage.getItem('dhikr_app_v2_db')) || {
+        const DEFAULT_DATABASE = {
             admin: {
                 username: "azar",
                 password: "8760546343"
@@ -297,36 +728,520 @@
                 { id: 2, name: "அப்துல் ரஹ்மான்" }
             ],
             dhikrs: [
-                { id: 1, name: "சுப்ஹானல்லாஹ்", arabic: "سُبْحَانَ اللَّهِ", meaning: "அல்லாஹ் தூய்மையானவன்" },
-                { id: 2, name: "அல்ஹம்துலில்லாஹ்", arabic: "الْحَمْدُ لِلَّهِ", meaning: "புகழ் அனைத்தும் அல்லாஹ்வுக்கே" },
-                { id: 3, name: "அல்லாஹு அக்பர்", arabic: "اللَّهُ أَكْبَرُ", meaning: "அல்லாஹ் மிகப் பெரியவன்" }
+                { id: 1, name: "1. ஸூரா அல்-ஃபாத்திஹா", arabic: "سُورَةُ الْفَاتِحَةِ / 1", count: 10, virtues: 1410, cat: "main" },
+                { id: 2, name: "112. ஸூரா அல்-இக்லாஸ்", arabic: "سُورَةُ الإِخْلَاصِ / 112", count: 10, virtues: 620, cat: "main" },
+                { id: 3, name: "113. ஸூரா அல்-ஃபலக்", arabic: "سُورَةُ الْفَلَقِ / 113", count: 10, virtues: 890, cat: "main" },
+                { id: 4, name: "114. ஸூரா அந்-நாஸ்", arabic: "سُورَةُ النَّاسِ / 114", count: 10, virtues: 940, cat: "main" },
+                { id: 5, name: "சுப்ஹானல்லாஹ்", arabic: "سُبْحَانَ اللَّهِ", count: 33, virtues: 10, cat: "main" },
+                { id: 6, name: "அல்ஹம்துலில்லாஹ்", arabic: "الْحَمْدُ لِلَّهِ", count: 33, virtues: 10, cat: "main" },
+                { id: 7, name: "அல்லாஹூ அக்பர்", arabic: "اللَّهُ أَكْبَرُ", count: 33, virtues: 10, cat: "main" },
+                { id: 8, name: "லாயிலாஹஇல்லல்லாஹுமுஹம்மதுர்ரசூலுல்லாஹ்", arabic: "لَا إِلَهَ إِلَّا اللَّهُ مُحَمَّدٌ رَسُولُ اللَّهِ", count: 100, virtues: 100, cat: "main" },
+                { id: 9, name: "ஸல்லல்லாஹு அலாமுஹம்மது ஸல்லல்லாஹு அலைஹி வஸல்லம்", arabic: "صَلَّى اللَّهُ عَلَى مُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ", count: 50, virtues: 100, cat: "main" },
+                { id: 10, name: "சுப்ஹானல்லாஹி வபிஹம்திஹி", arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", count: 100, virtues: 1000, cat: "main" },
+                { id: 11, name: "சுப்ஹானல்லாஹில் அலீம்", arabic: "سُبْحَانَ اللَّهِ الْعَظِيمِ", count: 50, virtues: 1000, cat: "main" },
+                { id: 12, name: "லாயிலாஹ இல்லா அன்த மலிக்குல் ஹக்கு மூமின்", arabic: "لَا إِلَهَ إِلَّا أَنْتَ الْمَلِكُ الْحَقُّ الْمُبِينُ", count: 30, virtues: 1000, cat: "main" },
+                { id: 13, name: "லாயிலாஹ இல்லா அன்த சுப்ஹானக இன்னீ குன்து மினல் ழாலிமீன்", arabic: "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ", count: 30, virtues: 1000, cat: "main" },
+                { id: 14, name: "லாஹவ்ல வலாகுவ்வத்த இல்லா பில்லாஹில் அளியில் அளீம்", arabic: "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ الْعَلِيِّ الْعَظِيمِ", count: 10, virtues: 250, cat: "main" },
+                { id: 15, name: "அஸ்தஹூபிருல்லாஹூல் அளீம்", arabic: "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ", count: 25, virtues: 100, cat: "main" },
+                { id: 16, name: "ஹஸ்புனல்லாஹு வநிஃமல் வகீல்", arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ", count: 25, virtues: 1000, cat: "main" },
+                { id: 17, name: "ரப்பி ஸித்னி இல்மா", arabic: "رَبِّ زِدْنِي عِلْمًا", count: 20, virtues: 25, cat: "main" },
+                { id: 18, name: "சுபஹானரப்பில்அலீம்", arabic: "سُبْحَانَ رَبِّيَ الْعَظِيمِ", count: 25, virtues: 100, cat: "main" },
+                { id: 19, name: "சுபஹான ரப்பில் அஹ்லா", arabic: "سُبْحَانَ رَبِّيَ الأَعْلَى", count: 25, virtues: 100, cat: "main" },
+                { id: 20, name: "ரஃபிக் பிர்லி", arabic: "رَبِّ اغْفِرْ لِي", count: 50, virtues: 100, cat: "main" },
+
+                // Ending Duas Section
+                { id: 101, name: "ரப்பனா ளலம்னா அன்ஃபுஸனா வஇல்லம் தங்பிர்லனா...", arabic: "رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ", count: 5, virtues: 5000, cat: "ending" },
+                { id: 102, name: "லாஇலாஹ இல்லா அன்த் ஸுப்ஹானக்க இன்னீகுன்த்து மினள்ளாலிமீன்", arabic: "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ", count: 5, virtues: 1000, cat: "ending" },
+                { id: 103, name: "ரப்பனா ஆத்தினா பித்துன்யாஹஸனத்தன் வபில் ஆகிரத்தி...", arabic: "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ", count: 5, virtues: 5000, cat: "ending" },
+                { id: 104, name: "சுப்ஹான ரப்பிக்க ரப்பில் இஸ்ஸத்தி அம்மா யஸிஃபூன்...", arabic: "سُبْحَانَ رَبِّكَ رَبِّ الْعِزَّةِ عَمَّا يَصِفُونَ وَسَلَامٌ عَلَى الْمُرْسَلِينَ وَالْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ", count: 1, virtues: 1000, cat: "ending" },
+                { id: 105, name: "ஆமீன்! ஆமீன்! யாரப்பல் ஆலமீன்", arabic: "آمِينَ يَا رَبَّ الْعَالَمِينَ", count: 1, virtues: 100, cat: "ending" }
             ],
-            logs: [],
-            tasks: [
-                { id: 1, text: "காலை சுப்ஹானல்லாஹ் 100 முறை", completed: false }
-            ]
+            dailyTaskOptions: [
+                { id: 1, title: "ஆப்ஷன் 1 (10 திக்ர்கள்)", dhikrIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+                { id: 2, title: "ஆப்ஷன் 2 (15 திக்ர்கள்)", dhikrIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
+                { id: 3, title: "ஆப்ஷன் 3 (சுருக்கு முறை - 5)", dhikrIds: [5, 6, 7, 8, 10] },
+                { id: 4, title: "ஆப்ஷன் 4 (ஸ்திஃபார் ஸ்பெஷல்)", dhikrIds: [15, 16, 17, 18, 19, 20] },
+                { id: 5, title: "ஆப்ஷன் 5 (முழுமையான 20 திக்ர்)", dhikrIds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] }
+            ],
+            logs: []
         };
 
-        let selectedUserId = db.users[0] ? db.users[0].id : 1;
-        let isTargetMode = true;
-        let initialTarget = 33;
-        let currentRemaining = 33;
-        let normalCount = 0;
+        const TRANSLATIONS = {
+            ta: {
+                current_user_label: "தற்போதைய பயனர் / வாடிக்கையாளர்:",
+                dash_title: "எனது திக்ர் & நன்மைகள் டாஷ்போர்டு",
+                dash_subtitle: "நாட்கள், வாரங்கள், மாதங்கள் மற்றும் வருடங்கள் அடிப்படையில் ஓதிய எண்ணிக்கையும் சேர்ந்த நன்மைகளும்.",
+                virtues_active: "நன்மைகள் கணக்கீடு செயலில் உள்ளது",
+                today: "இன்று",
+                this_week: "இந்த வாரம்",
+                this_month: "இந்த மாதம்",
+                this_year: "இந்த வருடம்",
+                total_dhikr: "மொத்த திக்ர்",
+                virtues: "நன்மைகள்",
+                grand_virtues_title: "மொத்த நன்மைகள் சோலை (Total Virtues Earned)",
+                grand_virtues_desc: "நீங்கள் ஓதிய அனைத்து திக்ர்களுக்கான நன்மைகளின் பிரம்மாண்டக் கூட்டுத்தொகை",
+                virtues_points: "நன்மைகள் (Virtue Points)",
+                backup_title: "தரவு பேக்கப் & அறிக்கை எடுப்பது (Backup & Report Download)",
+                backup_week: "1 வார பேக்கப் (JSON)",
+                backup_month: "1 மாத பேக்கப் (JSON)",
+                backup_pdf: "PDF அறிக்கை பெற",
+                history_title: "திக்ர் ஓதிய பதிவுகள் & திருத்தம் (Log History & Editing)",
+                th_date: "தேதி",
+                th_name: "திக்ர் பெயர்",
+                th_count: "ஓதிய எண்ணிக்கை",
+                th_virtues: "கிடைத்த நன்மைகள்",
+                th_action: "நடவடிக்கை (Edit/Delete)",
+                nav_dashboard: "டாஷ்போர்டு",
+                nav_opening: "ஆரம்ப துஆ",
+                nav_counter: "கவுண்டர் & பட்டியல்",
+                nav_ending: "முடிவு துஆக்கள்",
+                nav_admin: "அட்மின்",
+                counter_title: "டிஜிட்டல் திக்ர் கவுண்டர்",
+                select_dhikr: "ஓத வேண்டிய திக்ரைத் தேர்ந்தெடுக்கவும்:"
+            },
+            en: {
+                current_user_label: "Current User / Customer:",
+                dash_title: "My Dhikr & Virtues Dashboard",
+                dash_subtitle: "Recitation statistics and earned virtues across daily, weekly, monthly and yearly periods.",
+                virtues_active: "Virtues Calculation Active",
+                today: "Today",
+                this_week: "This Week",
+                this_month: "This Month",
+                this_year: "This Year",
+                total_dhikr: "Total Dhikr",
+                virtues: "Virtues",
+                grand_virtues_title: "Total Virtues Earned",
+                grand_virtues_desc: "Grand total sum of all virtues earned across all recitations",
+                virtues_points: "Virtue Points",
+                backup_title: "Data Backup & Report Download",
+                backup_week: "1 Week Backup (JSON)",
+                backup_month: "1 Month Backup (JSON)",
+                backup_pdf: "Download PDF Report",
+                history_title: "Recitation Log History & Editing",
+                th_date: "Date",
+                th_name: "Dhikr Name",
+                th_count: "Recited Count",
+                th_virtues: "Earned Virtues",
+                th_action: "Action (Edit/Delete)",
+                nav_dashboard: "Dashboard",
+                nav_opening: "Opening Dua",
+                nav_counter: "Counter & List",
+                nav_ending: "Ending Duas",
+                nav_admin: "Admin",
+                counter_title: "Digital Dhikr Counter",
+                select_dhikr: "Select Dhikr to Recite:"
+            }
+        };
 
-        function saveData() {
-            localStorage.setItem('dhikr_app_v2_db', JSON.stringify(db));
-            renderAll();
+        let db = JSON.parse(localStorage.getItem('islamic_dhikr_app_2026_db')) || DEFAULT_DATABASE;
+        let currentUserId = db.users[0] ? db.users[0].id : 1;
+        let counterMode = 'target';
+        let counterTarget = 33;
+        let counterRemaining = 33;
+        let counterNormalCount = 0;
+        let currentLang = 'ta';
+        let selectedFilterDate = null;
+        let activeDailyTaskOptionId = 1;
+        let openCounts = { 1: 0, 2: 3 };
+        let endingCounts = {};
+        let dailyTaskItemCounts = {};
+
+        function saveDB() {
+            localStorage.setItem('islamic_dhikr_app_2026_db', JSON.stringify(db));
+            renderAllUI();
+        }
+
+        function getCurrentUser() {
+            return db.users.find(u => u.id === currentUserId) || db.users[0];
+        }
+
+        function changeLanguage() {
+            currentLang = document.getElementById('languageSelect').value;
+            let langData = TRANSLATIONS[currentLang] || TRANSLATIONS['en'];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                let key = el.getAttribute('data-i18n');
+                if (langData[key]) el.innerText = langData[key];
+            });
+        }
+
+        // Customizer Functions
+        function changeThemeColor() {
+            let color = document.getElementById('themeColorSelect').value;
+            let root = document.getElementById('appHtmlRoot');
+            if (color === 'emerald') {
+                tailwind.config.theme.extend.colors.primary = '#059669';
+                tailwind.config.theme.extend.colors.primaryDark = '#047857';
+            } else if (color === 'amber') {
+                tailwind.config.theme.extend.colors.primary = '#d97706';
+                tailwind.config.theme.extend.colors.primaryDark = '#b45309';
+            } else if (color === 'purple') {
+                tailwind.config.theme.extend.colors.primary = '#7c3aed';
+                tailwind.config.theme.extend.colors.primaryDark = '#6d28d9';
+            } else {
+                tailwind.config.theme.extend.colors.primary = '#0284c7';
+                tailwind.config.theme.extend.colors.primaryDark = '#0369a1';
+            }
+            renderAllUI();
+        }
+
+        function changeFontSize(size) {
+            let body = document.getElementById('appBody');
+            if (size === 'small') {
+                body.className = "bg-bgLight text-slate-800 font-sans pb-28 min-h-screen text-xs sm:text-sm";
+            } else if (size === 'large') {
+                body.className = "bg-bgLight text-slate-800 font-sans pb-28 min-h-screen text-base sm:text-lg";
+            } else {
+                body.className = "bg-bgLight text-slate-800 font-sans pb-28 min-h-screen text-sm sm:text-base";
+            }
+        }
+
+        function onGlobalUserChange() {
+            currentUserId = parseInt(document.getElementById('globalUserSelect').value);
+            renderAllUI();
+        }
+
+        function openTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-primary', 'font-bold');
+                el.classList.add('text-slate-400');
+            });
+
+            if (btnElement) {
+                btnElement.classList.remove('text-slate-400');
+                btnElement.classList.add('text-primary', 'font-bold');
+            }
+        }
+
+        function adjustOpeningCounter(duaNum, change) {
+            openCounts[duaNum] += change;
+            if (openCounts[duaNum] < 0) openCounts[duaNum] = 0;
+            document.getElementById(`openCount${duaNum}`).innerText = openCounts[duaNum];
+        }
+
+        function saveOpeningDuaLog(duaName, duaNum, virtueRate = 500) {
+            let count = openCounts[duaNum];
+            if (count <= 0) {
+                alert("குறைந்தது 1 முறையாவது ஓத வேண்டும்!");
+                return;
+            }
+            let earnedVirtues = count * virtueRate;
+            let newLog = {
+                id: Date.now(),
+                userId: currentUserId,
+                dhikrId: 900 + duaNum,
+                dhikrName: `ஆரம்ப துஆ: ${duaName}`,
+                count: count,
+                virtuesEarned: earnedVirtues,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            };
+            db.logs.push(newLog);
+            saveDB();
+            alert(`வெற்றிகரமாக சேமிக்கப்பட்டது! நன்மைகள்: +${earnedVirtues}`);
+        }
+
+        function adjustEndingCounter(duaId, change) {
+            if (!endingCounts[duaId]) endingCounts[duaId] = 5;
+            endingCounts[duaId] += change;
+            if (endingCounts[duaId] < 0) endingCounts[duaId] = 0;
+            document.getElementById(`endCountNum_${duaId}`).innerText = endingCounts[duaId];
+        }
+
+        function saveEndingDuaLog(duaId) {
+            let dua = db.dhikrs.find(d => d.id === duaId);
+            if (!dua) return;
+            let count = endingCounts[duaId] || (dua.count || 5);
+            let virtueRate = dua.virtues || 1000;
+            let earnedVirtues = count * virtueRate;
+
+            let newLog = {
+                id: Date.now(),
+                userId: currentUserId,
+                dhikrId: dua.id,
+                dhikrName: `முடிவு துஆ: ${dua.name}`,
+                count: count,
+                virtuesEarned: earnedVirtues,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            };
+
+            db.logs.push(newLog);
+            saveDB();
+            alert(`நிறைவு துஆ சேமிக்கப்பட்டது! நன்மைகள்: +${earnedVirtues}`);
+        }
+
+        function onCounterDhikrChange() {
+            let selectedDhikrId = parseInt(document.getElementById('counterDhikrSelect').value);
+            let dhikr = db.dhikrs.find(d => d.id === selectedDhikrId);
+            if (dhikr) {
+                document.getElementById('counterDisplayArabic').innerText = dhikr.arabic || '';
+                document.getElementById('counterDisplayPronunciation').innerText = `(${dhikr.name})`;
+                document.getElementById('counterDisplayVirtuePerUnit').innerText = dhikr.virtues || 10;
+                document.getElementById('counterDisplayRecommendedTarget').innerText = dhikr.count || 33;
+                document.getElementById('targetInputCount').value = dhikr.count || 33;
+                resetCounterForTarget();
+            }
+        }
+
+        function toggleCounterMode(mode) {
+            counterMode = mode;
+            let targetLabel = document.getElementById('modeTargetLabel');
+            let normalLabel = document.getElementById('modeNormalLabel');
+
+            if (mode === 'target') {
+                targetLabel.classList.add('bg-white', 'text-primary', 'shadow-sm');
+                normalLabel.classList.remove('bg-white', 'text-primary', 'shadow-sm');
+                document.getElementById('targetBox').style.display = 'flex';
+            } else {
+                normalLabel.classList.add('bg-white', 'text-primary', 'shadow-sm');
+                targetLabel.classList.remove('bg-white', 'text-primary', 'shadow-sm');
+                document.getElementById('targetBox').style.display = 'none';
+            }
+            resetCounterForTarget();
+        }
+
+        function resetCounterForTarget() {
+            counterTarget = parseInt(document.getElementById('targetInputCount').value) || 33;
+            counterRemaining = counterTarget;
+            counterNormalCount = 0;
+            updateCounterDisplay();
+        }
+
+        function adjustCount(change) {
+            if (counterMode === 'target') {
+                if (change > 0) {
+                    if (counterRemaining > 0) counterRemaining--;
+                } else {
+                    if (counterRemaining < counterTarget) counterRemaining++;
+                }
+                if (counterRemaining === 0) alert("மாஷா அல்லாஹ்! உங்கள் திக்ர் இலக்கு பூர்த்தியடைந்தது!");
+            } else {
+                counterNormalCount += change;
+                if (counterNormalCount < 0) counterNormalCount = 0;
+            }
+            updateCounterDisplay();
+        }
+
+        function updateCounterDisplay() {
+            let currentDisplayNum = (counterMode === 'target') ? counterRemaining : counterNormalCount;
+            document.getElementById('currentCountNum').innerText = currentDisplayNum;
+            if (counterMode === 'target') {
+                document.getElementById('targetStatusText').innerText = `மீதம்: ${counterRemaining} / ${counterTarget}`;
+            } else {
+                document.getElementById('targetStatusText').innerText = `சாதாரண முறை (Normal Count)`;
+            }
+            let recitedCount = (counterMode === 'target') ? (counterTarget - counterRemaining) : counterNormalCount;
+            let selectedDhikrId = parseInt(document.getElementById('counterDhikrSelect').value);
+            let dhikr = db.dhikrs.find(d => d.id === selectedDhikrId);
+            let virtueRate = dhikr ? (dhikr.virtues || 10) : 10;
+            document.getElementById('savePreviewCount').innerText = recitedCount;
+            document.getElementById('savePreviewVirtues').innerText = recitedCount * virtueRate;
+        }
+
+        function saveCurrentDhikrLog() {
+            let selectedDhikrId = parseInt(document.getElementById('counterDhikrSelect').value);
+            let dhikr = db.dhikrs.find(d => d.id === selectedDhikrId);
+            let completedCount = (counterMode === 'target') ? (counterTarget - counterRemaining) : counterNormalCount;
+
+            if (!dhikr || completedCount <= 0) {
+                alert("குறைந்தது 1 திக்ராவது ஓதிய பின் சேமிக்கவும்!");
+                return;
+            }
+
+            let virtueRate = dhikr.virtues || 10;
+            let earnedVirtues = completedCount * virtueRate;
+            let newLog = {
+                id: Date.now(),
+                userId: currentUserId,
+                dhikrId: dhikr.id,
+                dhikrName: dhikr.name,
+                count: completedCount,
+                virtuesEarned: earnedVirtues,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            };
+            db.logs.push(newLog);
+            saveDB();
+            alert(`வெற்றிகரமாக சேமிக்கப்பட்டது!\nஓதிய எண்ணிக்கை: ${completedCount}\nகிடைத்த நன்மைகள்: +${earnedVirtues}`);
+            resetCounterForTarget();
+        }
+
+        function selectDailyTaskOption(optionId) {
+            activeDailyTaskOptionId = optionId;
+            renderDailyTasksUI();
+        }
+
+        function adjustDailyTaskCount(dhikrId, change) {
+            let key = `${activeDailyTaskOptionId}_${dhikrId}`;
+            if (dailyTaskItemCounts[key] === undefined) {
+                let d = db.dhikrs.find(item => item.id === dhikrId);
+                dailyTaskItemCounts[key] = d ? (d.count || 33) : 33;
+            }
+            dailyTaskItemCounts[key] += change;
+            if (dailyTaskItemCounts[key] < 0) dailyTaskItemCounts[key] = 0;
+            document.getElementById(`dtCount_${dhikrId}`).innerText = dailyTaskItemCounts[key];
+        }
+
+        function saveDailyTaskItemLog(dhikrId) {
+            let d = db.dhikrs.find(item => item.id === dhikrId);
+            if (!d) return;
+            let key = `${activeDailyTaskOptionId}_${dhikrId}`;
+            let count = dailyTaskItemCounts[key] !== undefined ? dailyTaskItemCounts[key] : (d.count || 33);
+            if (count <= 0) {
+                alert("எண்ணிக்கை 0 ஆக உள்ளது!");
+                return;
+            }
+            let earnedVirtues = count * (d.virtues || 10);
+            let newLog = {
+                id: Date.now(),
+                userId: currentUserId,
+                dhikrId: d.id,
+                dhikrName: `டெய்லி டாஸ்க்: ${d.name}`,
+                count: count,
+                virtuesEarned: earnedVirtues,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            };
+            db.logs.push(newLog);
+            saveDB();
+            alert(`டாஸ்க் திக்ர் சேமிக்கப்பட்டது! நன்மைகள்: +${earnedVirtues}`);
+        }
+
+        function resetDailyTaskItem(dhikrId) {
+            let key = `${activeDailyTaskOptionId}_${dhikrId}`;
+            let d = db.dhikrs.find(item => item.id === dhikrId);
+            dailyTaskItemCounts[key] = d ? (d.count || 33) : 33;
+            document.getElementById(`dtCount_${dhikrId}`).innerText = dailyTaskItemCounts[key];
+        }
+
+        function onFilterDateChange() {
+            selectedFilterDate = document.getElementById('filterSelectedDate').value;
+            renderAllUI();
+        }
+
+        function clearDateFilter() {
+            document.getElementById('filterSelectedDate').value = '';
+            selectedFilterDate = null;
+            renderAllUI();
+        }
+
+        function openEditLogModal(logId) {
+            let log = db.logs.find(l => l.id === logId);
+            if (!log) return;
+            document.getElementById('modalLogId').value = log.id;
+            document.getElementById('modalLogDate').value = log.date;
+            document.getElementById('modalLogCount').value = log.count;
+            let selectHtml = db.dhikrs.map(d => `<option value="${d.id}" ${d.id === log.dhikrId ? 'selected' : ''}>${d.name}</option>`).join('');
+            document.getElementById('modalLogDhikrSelect').innerHTML = selectHtml;
+            document.getElementById('editLogModal').classList.remove('hidden');
+        }
+
+        function closeLogModal() {
+            document.getElementById('editLogModal').classList.add('hidden');
+        }
+
+        function saveEditedLogModal() {
+            let logId = parseInt(document.getElementById('modalLogId').value);
+            let log = db.logs.find(l => l.id === logId);
+            if (!log) return;
+            let newDate = document.getElementById('modalLogDate').value;
+            let selectedDhikrId = parseInt(document.getElementById('modalLogDhikrSelect').value);
+            let newCount = parseInt(document.getElementById('modalLogCount').value) || 1;
+            let dhikr = db.dhikrs.find(d => d.id === selectedDhikrId);
+            let virtueRate = dhikr ? (dhikr.virtues || 10) : 10;
+            log.date = newDate;
+            log.dhikrId = selectedDhikrId;
+            log.dhikrName = dhikr ? dhikr.name : log.dhikrName;
+            log.count = newCount;
+            log.virtuesEarned = newCount * virtueRate;
+            saveDB();
+            closeLogModal();
+            alert("பதிவு வெற்றிகரமாக திருத்தப்பட்டது!");
+        }
+
+        function deleteLogEntry(logId) {
+            if (confirm("இந்த பதிவை நீக்க விரும்புகிறீர்களா?")) {
+                db.logs = db.logs.filter(l => l.id !== logId);
+                saveDB();
+            }
+        }
+
+        function exportCustomerExcel() {
+            let userLogs = db.logs.filter(l => l.userId === currentUserId);
+            if (userLogs.length === 0) {
+                alert("டவுன்லோட் செய்ய உங்களிடம் பதிவுகள் எதுவும் இல்லை!");
+                return;
+            }
+            let excelData = userLogs.map((l, index) => ({
+                "S.No (வ.எண்)": index + 1,
+                "Date (தேதி)": l.date,
+                "Dhikr / Dua Name (திக்ர் பெயர்)": l.dhikrName,
+                "Recited Count (எண்ணிக்கை)": l.count,
+                "Virtues Earned (கிடைத்த நன்மைகள்)": l.virtuesEarned
+            }));
+            let worksheet = XLSX.utils.json_to_sheet(excelData);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Dhikr Logs");
+            let activeUser = getCurrentUser();
+            XLSX.writeFile(workbook, `Dhikr_Report_${activeUser ? activeUser.name : 'User'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function filterDhikrList() {
+            let query = document.getElementById('dhikrSearchInput').value.toLowerCase();
+            document.querySelectorAll('.dhikr-card-item').forEach(card => {
+                let name = card.getAttribute('data-name').toLowerCase();
+                card.style.display = name.includes(query) ? 'block' : 'none';
+            });
+        }
+
+        function exportCustomerBackup(period, format) {
+            let userLogs = db.logs.filter(l => l.userId === currentUserId);
+            let now = new Date();
+            let filteredLogs = userLogs;
+            if (period === 'week') {
+                let oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+                filteredLogs = userLogs.filter(l => new Date(l.date) >= oneWeekAgo);
+            } else if (period === 'month') {
+                let currentMonthStr = now.toISOString().split('T')[0].substring(0, 7);
+                filteredLogs = userLogs.filter(l => l.date && l.date.startsWith(currentMonthStr));
+            }
+
+            if (format === 'json') {
+                let activeUser = getCurrentUser();
+                let backupData = { user: activeUser ? activeUser.name : "Customer", period, exportDate: new Date().toISOString(), logs: filteredLogs };
+                let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+                let dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `dhikr_backup_${period}_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            } else if (format === 'pdf') {
+                html2canvas(document.getElementById('pdfExportArea')).then(canvas => {
+                    let imgData = canvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    let pdf = new jsPDF('p', 'mm', 'a4');
+                    let pdfWidth = pdf.internal.pageSize.getWidth();
+                    let pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.setFontSize(14);
+                    pdf.text(`Dhikr & Virtues Report (${getCurrentUser().name})`, 10, 10);
+                    pdf.addImage(imgData, 'PNG', 10, 20, pdfWidth - 20, pdfHeight);
+                    pdf.save(`dhikr_report_${new Date().toISOString().split('T')[0]}.pdf`);
+                });
+            }
         }
 
         function checkAdminLogin() {
             let u = document.getElementById('adminUserAuthInput').value.trim();
             let p = document.getElementById('adminPassAuthInput').value.trim();
-
             if (u === db.admin.username && p === db.admin.password) {
                 document.getElementById('adminAuthGate').classList.add('hidden');
                 document.getElementById('adminControls').classList.remove('hidden');
             } else {
-                alert("தவறான பயனர் பெயர் அல்லது கடவுச்சொல்!");
+                alert("தவறான அட்மின் பயனர் பெயர் அல்லது பாஸ்வேர்ட்!");
             }
         }
 
@@ -337,288 +1252,386 @@
             document.getElementById('adminControls').classList.add('hidden');
         }
 
+        function switchAdminTab(subTab) {
+            document.getElementById('adminTabDhikr').classList.add('hidden');
+            document.getElementById('adminTabTask').classList.add('hidden');
+            document.getElementById('adminTabUser').classList.add('hidden');
+
+            document.getElementById('admBtnDhikr').className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700";
+            document.getElementById('admBtnTask').className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700";
+            document.getElementById('admBtnUser').className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700";
+
+            if (subTab === 'dhikrTab') {
+                document.getElementById('adminTabDhikr').classList.remove('hidden');
+                document.getElementById('admBtnDhikr').className = "px-4 py-2 rounded-lg text-xs font-bold bg-primary text-white shadow";
+            } else if (subTab === 'taskTab') {
+                document.getElementById('adminTabTask').classList.remove('hidden');
+                document.getElementById('admBtnTask').className = "px-4 py-2 rounded-lg text-xs font-bold bg-primary text-white shadow";
+                renderAdminTaskOptionsConfig();
+            } else if (subTab === 'userTab') {
+                document.getElementById('adminTabUser').classList.remove('hidden');
+                document.getElementById('admBtnUser').className = "px-4 py-2 rounded-lg text-xs font-bold bg-primary text-white shadow";
+            }
+        }
+
         function updateAdminCredentials() {
             let nu = document.getElementById('updateAdminUser').value.trim();
             let np = document.getElementById('updateAdminPass').value.trim();
-
-            if(nu && np) {
+            if (nu && np) {
                 db.admin.username = nu;
                 db.admin.password = np;
-                saveData();
-                alert("அட்மின் விபரங்கள் வெற்றிகரமாக மாற்றப்பட்டன!");
-                document.getElementById('updateAdminUser').value = '';
-                document.getElementById('updateAdminPass').value = '';
-            } else {
-                alert("புதிய பயனர் பெயர் மற்றும் பாஸ்வேர்டை நிரப்பவும்!");
+                saveDB();
+                alert("அட்மின் விபரங்கள் புதுப்பிக்கப்பட்டன!");
             }
         }
 
-        function onUserSelectChange() {
-            selectedUserId = parseInt(document.getElementById('counterUserSelect').value);
-            renderAll();
+        function moveDhikrOrder(index, direction) {
+            if (direction === 'up' && index > 0) {
+                let temp = db.dhikrs[index];
+                db.dhikrs[index] = db.dhikrs[index - 1];
+                db.dhikrs[index - 1] = temp;
+            } else if (direction === 'down' && index < db.dhikrs.length - 1) {
+                let temp = db.dhikrs[index];
+                db.dhikrs[index] = db.dhikrs[index + 1];
+                db.dhikrs[index + 1] = temp;
+            }
+            renderAdminReorderList();
         }
 
-        function switchTab(tabId, btnElement) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
+        function saveReorderedList() {
+            saveDB();
+            alert("துஆக்கள் பட்டியல் வரிசை அமைப்பு & மாற்றங்கள் வெற்றிகரமாக சேமிக்கப்பட்டன!");
+        }
 
-            document.querySelectorAll('.nav-btn').forEach(el => {
-                el.classList.remove('text-primary', 'font-semibold');
-                el.classList.add('text-slate-400');
+        function renderAdminReorderList() {
+            let ul = document.getElementById('adminReorderDhikrList');
+            ul.innerHTML = db.dhikrs.map((d, index) => `
+                <li class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+                    <div class="flex items-center gap-2 max-w-[60%]">
+                        <span class="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold flex items-center justify-center shrink-0">
+                            ${index + 1}
+                        </span>
+                        <div>
+                            <span class="font-bold text-slate-800 block truncate">${d.name}</span>
+                            <span class="text-[10px] text-slate-500 font-serif" dir="rtl">${d.arabic}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="moveDhikrOrder(${index}, 'up')" class="bg-sky-100 hover:bg-sky-200 text-sky-800 p-1.5 rounded-lg font-bold" title="மேலே நகர்த்து">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button onclick="moveDhikrOrder(${index}, 'down')" class="bg-sky-100 hover:bg-sky-200 text-sky-800 p-1.5 rounded-lg font-bold" title="கீழே நகர்த்து">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button onclick="editDhikr(${d.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-1.5 rounded-lg font-bold" title="எடிட் செய்ய">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="removeDhikr(${d.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-800 px-2 py-1.5 rounded-lg font-bold" title="நீக்க">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function renderAdminTaskOptionsConfig() {
+            let container = document.getElementById('adminTaskOptionsConfigList');
+            container.innerHTML = db.dailyTaskOptions.map(opt => `
+                <div class="bg-white p-3 rounded-xl border border-emerald-200 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <input type="text" id="admOptTitle_${opt.id}" value="${opt.title}" class="font-bold text-xs border p-1.5 rounded w-64 bg-slate-50">
+                        <span class="text-xs text-slate-500">${opt.dhikrIds.length} திக்ர்கள் தேர்வு செய்யப்பட்டுள்ளன</span>
+                    </div>
+                    <div class="text-xs text-slate-600 max-h-32 overflow-y-auto custom-scrollbar border p-2 rounded bg-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${db.dhikrs.map(d => `
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="admOptChk_${opt.id}" value="${d.id}" ${opt.dhikrIds.includes(d.id) ? 'checked' : ''}>
+                                <span class="truncate">${d.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <button onclick="saveAdminTaskOption(${opt.id})" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">இந்த ஆப்ஷனைச் சேமி</button>
+                </div>
+            `).join('');
+        }
+
+        function saveAdminTaskOption(optId) {
+            let opt = db.dailyTaskOptions.find(o => o.id === optId);
+            if (!opt) return;
+            opt.title = document.getElementById(`admOptTitle_${optId}`).value.trim();
+            let selectedIds = [];
+            document.querySelectorAll(`.admOptChk_${optId}`).forEach(chk => {
+                if (chk.checked) selectedIds.push(parseInt(chk.value));
             });
-            if(btnElement) {
-                btnElement.classList.remove('text-slate-400');
-                btnElement.classList.add('text-primary', 'font-semibold');
-            }
+            opt.dhikrIds = selectedIds;
+            saveDB();
+            alert("டெய்லி டாஸ்க் ஆப்ஷன் வெற்றிகரமாக சேமிக்கப்பட்டது!");
         }
 
-        function toggleMode(mode) {
-            isTargetMode = (mode === 'target');
-            document.getElementById('targetBox').style.display = isTargetMode ? 'flex' : 'none';
-            resetCounterForTarget();
-        }
+        function saveDhikrCategory() {
+            let editId = document.getElementById('adminEditDhikrId').value;
+            let name = document.getElementById('adminDhikrName').value.trim();
+            let arabic = document.getElementById('adminDhikrArabic').value.trim();
+            let count = parseInt(document.getElementById('adminDhikrTarget').value) || 33;
+            let virtues = parseInt(document.getElementById('adminDhikrVirtues').value) || 10;
+            let cat = document.getElementById('adminDhikrCategory').value;
 
-        function resetCounterForTarget() {
-            initialTarget = parseInt(document.getElementById('targetInputCount').value) || 33;
-            currentRemaining = initialTarget;
-            normalCount = 0;
-
-            if (isTargetMode) {
-                document.getElementById('currentCountNum').innerText = currentRemaining;
-                document.getElementById('targetStatusText').innerText = `மீதமுள்ள திக்ர்: ${currentRemaining} / ${initialTarget}`;
-            } else {
-                document.getElementById('currentCountNum').innerText = normalCount;
-                document.getElementById('targetStatusText').innerText = `சாதாரண முறை (Normal Count)`;
-            }
-        }
-
-        function adjustCount(change) {
-            if (isTargetMode) {
-                if (change > 0) {
-                    if (currentRemaining > 0) currentRemaining--;
-                } else {
-                    if (currentRemaining < initialTarget) currentRemaining++;
-                }
-
-                document.getElementById('currentCountNum').innerText = currentRemaining;
-                document.getElementById('targetStatusText').innerText = `மீதமுள்ள திக்ர்: ${currentRemaining} / ${initialTarget}`;
-
-                if (currentRemaining === 0) {
-                    alert("மாஷா அல்லாஹ்! உங்கள் திக்ர் டார்கெட் நிறைவடைந்தது!");
-                }
-            } else {
-                normalCount += change;
-                if (normalCount < 0) normalCount = 0;
-
-                document.getElementById('currentCountNum').innerText = normalCount;
-                document.getElementById('targetStatusText').innerText = `சாதாரண முறை (Normal Count)`;
-            }
-        }
-
-        function updateCounterDisplayInfo() {
-            let dhikrId = document.getElementById('counterDhikrSelect').value;
-            let dhikr = db.dhikrs.find(d => d.id == dhikrId);
-            if(dhikr) {
-                document.getElementById('displayArabic').innerText = dhikr.arabic || '';
-                document.getElementById('displayMeaning').innerText = dhikr.meaning || '';
-            }
-        }
-
-        function saveCurrentDhikrLog() {
-            let userId = parseInt(document.getElementById('counterUserSelect').value);
-            let dhikrId = document.getElementById('counterDhikrSelect').value;
-            let completedCount = isTargetMode ? (initialTarget - currentRemaining) : normalCount;
-
-            if(!userId || !dhikrId || completedCount <= 0) {
-                alert("பயனர் மற்றும் திக்ர் விபரங்களைச் சரிபார்க்கவும்!");
+            if (!name) {
+                alert("திக்ர் பெயரை உள்ளிடவும்!");
                 return;
             }
 
-            let user = db.users.find(u => u.id == userId);
-            let dhikr = db.dhikrs.find(d => d.id == dhikrId);
+            if (editId) {
+                let dhikr = db.dhikrs.find(d => d.id == editId);
+                if (dhikr) {
+                    dhikr.name = name;
+                    dhikr.arabic = arabic;
+                    dhikr.count = count;
+                    dhikr.virtues = virtues;
+                    dhikr.cat = cat;
+                }
+            } else {
+                db.dhikrs.push({ id: Date.now(), name, arabic, count, virtues, cat });
+            }
+            saveDB();
+            resetDhikrForm();
+            alert("திக்ர் விபரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டன!");
+        }
 
-            db.logs.push({
-                userId: userId,
-                userName: user ? user.name : 'Unknown',
-                dhikrName: dhikr ? dhikr.name : 'Unknown',
-                count: completedCount,
-                date: new Date().toISOString().split('T')[0]
-            });
+        function editDhikr(id) {
+            let dhikr = db.dhikrs.find(d => d.id === id);
+            if (!dhikr) return;
+            document.getElementById('adminEditDhikrId').value = dhikr.id;
+            document.getElementById('adminDhikrName').value = dhikr.name || '';
+            document.getElementById('adminDhikrArabic').value = dhikr.arabic || '';
+            document.getElementById('adminDhikrTarget').value = dhikr.count || 33;
+            document.getElementById('adminDhikrVirtues').value = dhikr.virtues || 10;
+            document.getElementById('adminDhikrCategory').value = dhikr.cat || 'main';
 
-            saveData();
-            alert(`வெற்றிகரமாக சேமிக்கப்பட்டது! ஓதிய எண்ணிக்கை: ${completedCount}`);
-            resetCounterForTarget();
+            document.getElementById('dhikrFormTitle').innerText = "திக்ரை திருத்துக (Edit Dhikr)";
+            document.getElementById('saveDhikrBtn').innerText = "புதுப்பி (Update)";
+            document.getElementById('cancelDhikrEditBtn').classList.remove('hidden');
+        }
+
+        function resetDhikrForm() {
+            document.getElementById('adminEditDhikrId').value = '';
+            document.getElementById('adminDhikrName').value = '';
+            document.getElementById('adminDhikrArabic').value = '';
+            document.getElementById('adminDhikrTarget').value = 33;
+            document.getElementById('adminDhikrVirtues').value = 10;
+            document.getElementById('dhikrFormTitle').innerText = "புதிய திக்ர் மற்றும் நன்மைகள் சேர் (Add Dhikr)";
+            document.getElementById('saveDhikrBtn').innerText = "திக்ர் விபரங்களைச் சேமி";
+            document.getElementById('cancelDhikrEditBtn').classList.add('hidden');
+        }
+
+        function removeDhikr(id) {
+            if (confirm("இந்த திக்ரை நீக்க விரும்புகிறீர்களா?")) {
+                db.dhikrs = db.dhikrs.filter(d => d.id !== id);
+                saveDB();
+            }
         }
 
         function addUser() {
             let name = document.getElementById('newUserName').value.trim();
-            if(name) {
-                db.users.push({ id: Date.now(), name: name });
+            if (name) {
+                let newUser = { id: Date.now(), name: name };
+                db.users.push(newUser);
+                currentUserId = newUser.id;
                 document.getElementById('newUserName').value = '';
-                saveData();
+                saveDB();
+                alert(`புதிய பயனர் '${name}' சேர்க்கப்பட்டார்!`);
             }
         }
 
         function removeUser(id) {
-            db.users = db.users.filter(u => u.id !== id);
-            saveData();
-        }
-
-        function addDhikrCategory() {
-            let name = document.getElementById('newDhikrName').value.trim();
-            let arabic = document.getElementById('newDhikrArabic').value.trim();
-            let meaning = document.getElementById('newDhikrMeaning').value.trim();
-
-            if(name) {
-                db.dhikrs.push({ id: Date.now(), name, arabic, meaning });
-                document.getElementById('newDhikrName').value = '';
-                document.getElementById('newDhikrArabic').value = '';
-                document.getElementById('newDhikrMeaning').value = '';
-                saveData();
+            if (db.users.length <= 1) {
+                alert("குறைந்தது ஒரு பயனராவது இருக்க வேண்டும்!");
+                return;
             }
-        }
-
-        function removeDhikr(id) {
-            db.dhikrs = db.dhikrs.filter(d => d.id !== id);
-            saveData();
-        }
-
-        function addDailyTask() {
-            let text = document.getElementById('newTaskInput').value.trim();
-            if(text) {
-                db.tasks.push({ id: Date.now(), text, completed: false });
-                document.getElementById('newTaskInput').value = '';
-                saveData();
+            if (confirm("இந்த பயனரை நீக்க விரும்புகிறீர்களா?")) {
+                db.users = db.users.filter(u => u.id !== id);
+                if (currentUserId === id) currentUserId = db.users[0].id;
+                saveDB();
             }
-        }
-
-        function removeTask(id) {
-            db.tasks = db.tasks.filter(t => t.id !== id);
-            saveData();
-        }
-
-        function renderAdminUserInspection() {
-            let uId = parseInt(document.getElementById('adminInspectUserSelect').value);
-            let userLogs = db.logs.filter(l => l.userId === uId);
-            let user = db.users.find(u => u.id === uId);
-
-            let today = new Date().toISOString().split('T')[0];
-            let userDaily = userLogs.filter(l => l.date === today).reduce((sum, l) => sum + l.count, 0);
-            let userTotal = userLogs.reduce((sum, l) => sum + l.count, 0);
-
-            let inspectHTML = `
-                <p class="font-bold text-sky-900 border-b pb-1 mb-2">பெயர்: ${user ? user.name : ''}</p>
-                <div class="grid grid-cols-2 gap-2 text-xs text-center mb-3">
-                    <div class="bg-sky-50 p-2 rounded">இன்றைய ஓதல்: <span class="font-bold text-primary">${userDaily}</span></div>
-                    <div class="bg-sky-50 p-2 rounded">மொத்த ஓதல்: <span class="font-bold text-primary">${userTotal}</span></div>
-                </div>
-                <p class="font-semibold text-xs text-slate-700 mb-1">ஓதிய திக்ர் பட்டியல்:</p>
-                <ul class="space-y-1 text-xs max-h-40 overflow-y-auto">
-                    ${userLogs.map(l => `
-                        <li class="flex justify-between border-b pb-1">
-                            <span>${l.dhikrName}</span>
-                            <span class="font-bold text-primary">${l.count} (${l.date})</span>
-                        </li>
-                    `).join('') || '<p class="text-slate-400">பதிவுகள் இல்லை</p>'}
-                </ul>
-            `;
-            document.getElementById('adminUserInspectCard').innerHTML = inspectHTML;
         }
 
         function resetAllData() {
-            if(confirm("அனைத்துத் தரவுகளையும் அழிக்க விரும்புகிறீர்களா?")) {
-                localStorage.removeItem('dhikr_app_v2_db');
+            if (confirm("அனைத்துத் தரவுகளையும் தொடக்க நிலைக்கு அமைக்க விரும்புகிறீர்களா?")) {
+                localStorage.removeItem('islamic_dhikr_app_2026_db');
                 location.reload();
             }
         }
 
-        function exportData() {
-            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            let dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", "dhikr_backup.json");
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
+        function renderDailyTasksUI() {
+            let optionsContainer = document.getElementById('dailyTaskOptionsContainer');
+            optionsContainer.innerHTML = db.dailyTaskOptions.map(opt => `
+                <button onclick="selectDailyTaskOption(${opt.id})" class="p-2.5 rounded-xl text-xs font-bold border transition ${opt.id === activeDailyTaskOptionId ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-sky-900 border-sky-200 hover:bg-sky-50'}">
+                    ${opt.title}
+                </button>
+            `).join('');
+
+            let activeOpt = db.dailyTaskOptions.find(o => o.id === activeDailyTaskOptionId) || db.dailyTaskOptions[0];
+            document.getElementById('activeTaskOptionTitle').innerText = activeOpt ? activeOpt.title : 'ஆப்ஷன்';
+            document.getElementById('activeTaskOptionCountBadge').innerText = `${activeOpt ? activeOpt.dhikrIds.length : 0} திக்ர்கள்`;
+
+            let tableBody = document.getElementById('dailyTaskTableBody');
+            let matchedDhikrs = db.dhikrs.filter(d => activeOpt && activeOpt.dhikrIds.includes(d.id));
+
+            if (matchedDhikrs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">இந்த ஆப்ஷனில் திக்ர்கள் எதுவும் இல்லை. அட்மின் பேனலில் சேர்க்கவும்.</td></tr>`;
+            } else {
+                tableBody.innerHTML = matchedDhikrs.map((d, index) => {
+                    let key = `${activeDailyTaskOptionId}_${d.id}`;
+                    let currentCount = dailyTaskItemCounts[key] !== undefined ? dailyTaskItemCounts[key] : (d.count || 33);
+                    return `
+                        <tr class="hover:bg-sky-50/50 transition">
+                            <td class="p-3 font-bold text-slate-500">${index + 1}</td>
+                            <td class="p-3">
+                                <span class="font-bold text-slate-800 block">${d.name}</span>
+                                <span class="text-[10px] text-slate-500 font-serif" dir="rtl">${d.arabic}</span>
+                            </td>
+                            <td class="p-3 text-center">
+                                <span id="dtCount_${d.id}" class="text-base font-black text-primary">${currentCount}</span>
+                            </td>
+                            <td class="p-3 text-center font-bold text-amber-600">+${d.virtues || 10}</td>
+                            <td class="p-3 text-right">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <button onclick="adjustDailyTaskCount(${d.id}, -1)" class="w-7 h-7 bg-rose-100 text-rose-700 rounded font-bold">-</button>
+                                    <button onclick="adjustDailyTaskCount(${d.id}, 1)" class="w-7 h-7 bg-sky-100 text-sky-800 rounded font-bold">+</button>
+                                    <button onclick="resetDailyTaskItem(${d.id})" class="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">ரீசெட்</button>
+                                    <button onclick="saveDailyTaskItemLog(${d.id})" class="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold shadow">சேமி</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
         }
 
-        function renderAll() {
-            let userSelect = document.getElementById('counterUserSelect');
-            let dhikrSelect = document.getElementById('counterDhikrSelect');
-            let adminInspectSelect = document.getElementById('adminInspectUserSelect');
+        function renderAllUI() {
+            let globalSelect = document.getElementById('globalUserSelect');
+            globalSelect.innerHTML = db.users.map(u => `<option value="${u.id}" ${u.id === currentUserId ? 'selected' : ''}>${u.name}</option>`).join('');
 
-            userSelect.innerHTML = db.users.map(u => `<option value="${u.id}" ${u.id === selectedUserId ? 'selected' : ''}>${u.name}</option>`).join('');
-            dhikrSelect.innerHTML = db.dhikrs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-            adminInspectSelect.innerHTML = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-
-            let activeUser = db.users.find(u => u.id === selectedUserId);
+            let activeUser = getCurrentUser();
             document.getElementById('activeUserLabel').innerText = activeUser ? activeUser.name : 'பயனர்';
 
-            // User Personal Dashboard Analytics
-            let userLogs = db.logs.filter(l => l.userId === selectedUserId);
-            let today = new Date().toISOString().split('T')[0];
-            let currentMonth = today.substring(0, 7);
+            let userLogs = db.logs.filter(l => l.userId === currentUserId);
+            let now = new Date();
+            let todayStr = selectedFilterDate || now.toISOString().split('T')[0];
+            let oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+            let currentMonthStr = todayStr.substring(0, 7);
+            let currentYearStr = todayStr.substring(0, 4);
 
-            let myDaily = userLogs.filter(l => l.date === today).reduce((sum, l) => sum + l.count, 0);
-            let myMonthly = userLogs.filter(l => l.date.startsWith(currentMonth)).reduce((sum, l) => sum + l.count, 0);
-            let myTotal = userLogs.reduce((sum, l) => sum + l.count, 0);
+            document.getElementById('statDateLabel').innerText = selectedFilterDate ? `தேதி: ${selectedFilterDate}` : 'இன்று';
 
-            document.getElementById('myStatDaily').innerText = myDaily;
-            document.getElementById('myStatMonthly').innerText = myMonthly;
-            document.getElementById('myStatTotal').innerText = myTotal;
+            let dailyLogs = userLogs.filter(l => l.date === todayStr);
+            let dailyCount = dailyLogs.reduce((sum, l) => sum + l.count, 0);
+            let dailyVirtues = dailyLogs.reduce((sum, l) => sum + l.virtuesEarned, 0);
 
-            // Personal History Table
-            document.getElementById('myRecitedTableBody').innerHTML = userLogs.map(l => `
-                <tr class="border-b border-sky-100">
-                    <td class="p-2 font-semibold text-slate-800">${l.dhikrName}</td>
-                    <td class="p-2 font-bold text-primary">${l.count}</td>
-                    <td class="p-2 text-xs text-slate-500">${l.date}</td>
-                </tr>
-            `).join('') || `<tr><td colspan="3" class="p-4 text-center text-slate-400">உங்கள் திக்ர் பதிவுகள் எதுவும் இல்லை</td></tr>`;
+            let weeklyLogs = userLogs.filter(l => new Date(l.date) >= oneWeekAgo);
+            let weeklyCount = weeklyLogs.reduce((sum, l) => sum + l.count, 0);
+            let weeklyVirtues = weeklyLogs.reduce((sum, l) => sum + l.virtuesEarned, 0);
 
-            // Admin All Users Analytics Summary
-            document.getElementById('adminAllDaily').innerText = db.logs.filter(l => l.date === today).reduce((sum, l) => sum + l.count, 0);
-            document.getElementById('adminAllMonthly').innerText = db.logs.filter(l => l.date.startsWith(currentMonth)).reduce((sum, l) => sum + l.count, 0);
-            document.getElementById('adminAllTotal').innerText = db.logs.reduce((sum, l) => sum + l.count, 0);
+            let monthlyLogs = userLogs.filter(l => l.date && l.date.startsWith(currentMonthStr));
+            let monthlyCount = monthlyLogs.reduce((sum, l) => sum + l.count, 0);
+            let monthlyVirtues = monthlyLogs.reduce((sum, l) => sum + l.virtuesEarned, 0);
 
-            // Dhikr Cards
-            document.getElementById('dhikrCardsContainer').innerHTML = db.dhikrs.map(d => `
-                <div class="border border-sky-200 bg-sky-50/50 p-3 rounded-lg">
-                    <h3 class="font-bold text-sky-900">${d.name}</h3>
-                    <p class="text-xl font-bold my-1 text-slate-800">${d.arabic || ''}</p>
-                    <p class="text-xs text-slate-600">${d.meaning || ''}</p>
+            let yearlyLogs = userLogs.filter(l => l.date && l.date.startsWith(currentYearStr));
+            let yearlyCount = yearlyLogs.reduce((sum, l) => sum + l.count, 0);
+            let yearlyVirtues = yearlyLogs.reduce((sum, l) => sum + l.virtuesEarned, 0);
+
+            let grandVirtues = userLogs.reduce((sum, l) => sum + l.virtuesEarned, 0);
+
+            document.getElementById('statDailyCount').innerText = dailyCount.toLocaleString('ta-IN');
+            document.getElementById('statDailyVirtues').innerText = `+${dailyVirtues.toLocaleString('ta-IN')}`;
+            document.getElementById('statWeeklyCount').innerText = weeklyCount.toLocaleString('ta-IN');
+            document.getElementById('statWeeklyVirtues').innerText = `+${weeklyVirtues.toLocaleString('ta-IN')}`;
+            document.getElementById('statMonthlyCount').innerText = monthlyCount.toLocaleString('ta-IN');
+            document.getElementById('statMonthlyVirtues').innerText = `+${monthlyVirtues.toLocaleString('ta-IN')}`;
+            document.getElementById('statYearlyCount').innerText = yearlyCount.toLocaleString('ta-IN');
+            document.getElementById('statYearlyVirtues').innerText = `+${yearlyVirtues.toLocaleString('ta-IN')}`;
+            document.getElementById('grandTotalVirtues').innerText = grandVirtues.toLocaleString('ta-IN');
+
+            let displayLogs = selectedFilterDate ? userLogs.filter(l => l.date === selectedFilterDate) : userLogs;
+            document.getElementById('historyRecordCount').innerText = `${displayLogs.length} பதிவுகள்`;
+
+            let tableBody = document.getElementById('userHistoryTableBody');
+            if (displayLogs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">${selectedFilterDate ? selectedFilterDate + ' தேதியில் பதிவுகள் எதுவும் இல்லை.' : 'தற்போது திக்ர் பதிவுகள் எதுவும் இல்லை.'}</td></tr>`;
+            } else {
+                tableBody.innerHTML = displayLogs.slice().reverse().map(l => `
+                    <tr class="hover:bg-sky-50/50 transition">
+                        <td class="p-3 text-slate-500 font-medium">${l.date}</td>
+                        <td class="p-3 font-bold text-slate-800">${l.dhikrName}</td>
+                        <td class="p-3 text-center font-extrabold text-primary">${l.count}</td>
+                        <td class="p-3 text-center font-extrabold text-amber-600">+${l.virtuesEarned}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="openEditLogModal(${l.id})" class="text-sky-600 hover:text-sky-800 font-bold p-1 mr-2" title="எடிட் செய்ய"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteLogEntry(${l.id})" class="text-rose-500 hover:text-rose-700 font-bold p-1" title="நீக்க"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('counterDhikrSelect').innerHTML = db.dhikrs.map(d => `<option value="${d.id}">${d.name} (${d.arabic})</option>`).join('');
+
+            document.getElementById('fullDhikrListContainer').innerHTML = db.dhikrs.map((d, index) => `
+                <div class="dhikr-card-item bg-white p-3.5 rounded-xl border border-sky-100 shadow-sm space-y-1.5" data-name="${d.name}">
+                    <div class="flex justify-between items-start gap-2">
+                        <h4 class="font-bold text-sm text-sky-950 flex items-center gap-1.5">
+                            <span class="text-xs bg-sky-100 text-sky-800 font-extrabold px-2 py-0.5 rounded-md">${index + 1}</span>
+                            <span>${d.name}</span>
+                        </h4>
+                        <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold border border-amber-200">+${d.virtues} நன்மைகள்</span>
+                    </div>
+                    <p class="text-xl font-bold text-slate-800 font-serif" dir="rtl">${d.arabic}</p>
+                    <div class="text-[11px] text-slate-500 flex justify-between items-center pt-1 border-t border-slate-100">
+                        <span>தினசரி ஓத வேண்டியது: <strong class="text-sky-900 font-bold">${d.count} முறை</strong></span>
+                        <span class="capitalize text-slate-400">${d.cat || 'main'}</span>
+                    </div>
                 </div>
             `).join('');
 
-            // Admin User & Dhikr Management Lists
+            let endingDuas = db.dhikrs.filter(d => d.cat === 'ending');
+            document.getElementById('endingDuasContainer').innerHTML = endingDuas.map(d => {
+                if (endingCounts[d.id] === undefined) endingCounts[d.id] = d.count || 5;
+                return `
+                    <div class="bg-gradient-to-r from-emerald-50/80 to-teal-50/50 p-4 sm:p-5 rounded-2xl border border-emerald-200 space-y-3">
+                        <div class="flex justify-between items-center flex-wrap gap-2">
+                            <span class="text-xs font-bold bg-emerald-600 text-white px-3 py-0.5 rounded-full">முடிவு துஆ</span>
+                            <span class="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">நன்மை: +${d.virtues} / முறை</span>
+                        </div>
+                        <p class="text-xl sm:text-2xl font-bold text-emerald-950 font-serif leading-relaxed text-right" dir="rtl">${d.arabic}</p>
+                        <p class="text-xs sm:text-sm font-bold text-slate-700">${d.name}</p>
+                        <div class="bg-white p-3 rounded-xl border border-emerald-200 max-w-sm ml-auto flex items-center justify-between gap-2">
+                            <div class="text-left">
+                                <span class="text-xs text-slate-500 block">எண்ணிக்கை:</span>
+                                <span id="endCountNum_${d.id}" class="text-lg font-black text-emerald-700">${endingCounts[d.id]}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="adjustEndingCounter(${d.id}, -1)" class="w-8 h-8 bg-rose-100 text-rose-700 rounded font-bold">-</button>
+                                <button onclick="adjustEndingCounter(${d.id}, 1)" class="w-8 h-8 bg-emerald-600 text-white rounded font-bold">+</button>
+                                <button onclick="saveEndingDuaLog(${d.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold">சேமி</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderDailyTasksUI();
+            renderAdminReorderList();
             document.getElementById('adminUserList').innerHTML = db.users.map(u => `
-                <li class="flex justify-between items-center bg-white p-2 rounded border">
-                    <span>${u.name}</span>
-                    <button onclick="removeUser(${u.id})" class="text-rose-500 text-xs font-bold">நீக்கு</button>
+                <li class="flex justify-between items-center bg-white p-2 rounded-lg border">
+                    <span class="font-medium">${u.name}</span>
+                    <button onclick="removeUser(${u.id})" class="text-rose-500 font-bold hover:underline">நீக்கு</button>
                 </li>
             `).join('');
-
-            document.getElementById('adminDhikrList').innerHTML = db.dhikrs.map(d => `
-                <li class="flex justify-between items-center bg-white p-2 rounded border">
-                    <span>${d.name}</span>
-                    <button onclick="removeDhikr(${d.id})" class="text-rose-500 text-xs font-bold">நீக்கு</button>
-                </li>
-            `).join('');
-
-            // Tasks
-            document.getElementById('dailyTaskList').innerHTML = db.tasks.map(t => `
-                <div class="flex items-center justify-between bg-sky-50 p-2 rounded border border-sky-100">
-                    <span class="text-sm text-slate-700">${t.text}</span>
-                    <button onclick="removeTask(${t.id})" class="text-rose-500 text-xs">நீக்கு</button>
-                </div>
-            `).join('');
-
-            updateCounterDisplayInfo();
-            renderAdminUserInspection();
         }
 
-        renderAll();
-        resetCounterForTarget();
+        window.onload = function() {
+            renderAllUI();
+            onCounterDhikrChange();
+        };
     </script>
 </body>
 </html>
